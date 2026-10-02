@@ -4,7 +4,11 @@ import SwiftUI
 /// background, injected by each app rather than hardcoded. The same step
 /// view renders CrumbDB's brand (custom font, topo background, card chrome)
 /// and Marie's plain system look without forking the view itself, only the
-/// theme passed to it differs.
+/// theme in the environment differs.
+///
+/// Views read it from the environment. Set it once at the app's root with
+/// `.onboardingTheme(_:)` and every `HowdyKitUI` view below picks it up, no
+/// per-view plumbing.
 ///
 /// Not `Sendable`: this is SwiftUI configuration data, read on the main
 /// actor as part of rendering, the same as the views it configures.
@@ -36,4 +40,15 @@ public struct OnboardingTheme {
     /// materials-based card. What an app reaches for until it wants to
     /// brand the flow.
     public static let `default` = OnboardingTheme()
+}
+
+public extension EnvironmentValues {
+    @Entry var onboardingTheme: OnboardingTheme = .default
+}
+
+public extension View {
+    /// Sets the theme every HowdyKitUI view below this point renders with.
+    func onboardingTheme(_ theme: OnboardingTheme) -> some View {
+        environment(\.onboardingTheme, theme)
+    }
 }

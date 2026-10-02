@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import Testing
 @testable import HowdyKit
 
@@ -14,12 +15,20 @@ struct OnboardingFlowTests {
     private let photos = OnboardingStepID("com.dryan.crumbdb.reqs.photos")
     private let localNetwork = OnboardingStepID("com.dryan.crumbdb.reqs.local-network")
 
-    private func threeStepFlow(storage: any OnboardingStorage) -> OnboardingFlow {
+    private let welcomeID = OnboardingStepID("com.dryan.crumbdb.welcome")
+
+    private func threeStepFlow(
+        welcome: OnboardingStepID? = nil,
+        storage: any OnboardingStorage
+    ) -> OnboardingFlow {
         OnboardingFlow(
+            welcome: welcome,
             steps: [
-                OnboardingStepConfig(id: health, isRequired: false),
-                OnboardingStepConfig(id: location, isRequired: true),
-                OnboardingStepConfig(id: photos, isRequired: true),
+                // Acknowledge-only: no skip path, not required.
+                OnboardingStepConfig(id: health, isRequired: false, isSkippable: false),
+                // Required permission steps that can still be declined.
+                OnboardingStepConfig(id: location, isRequired: true, isSkippable: true),
+                OnboardingStepConfig(id: photos, isRequired: true, isSkippable: true),
             ],
             storage: storage
         )
@@ -76,29 +85,122 @@ struct OnboardingFlowTests {
         #expect(flow.allRequiredSatisfied)
     }
 
+    private func step(_ id: OnboardingStepID, in flow: OnboardingFlow) -> OnboardingStepConfig {
+        flow.steps.first { $0.id == id }!
+    }
+
     @Test("Leaving a skippable step with no answer counts as skipped")
     func leavingSkippableStepRecordsFalse() {
-        let storage = makeStorage()
-        let flow = threeStepFlow(storage: storage)
-        flow.recordIfNeeded(leaving: health, isSkippable: true)
-        #expect(flow.value(for: health) == false)
+        let flow = threeStepFlow(storage: makeStorage())
+        flow.recordIfNeeded(leaving: step(photos, in: flow))
+        #expect(flow.value(for: photos) == false)
     }
 
     @Test("Leaving a non-skippable step with no answer counts as acknowledged")
     func leavingNonSkippableStepRecordsTrue() {
-        let storage = makeStorage()
-        let flow = threeStepFlow(storage: storage)
-        flow.recordIfNeeded(leaving: health, isSkippable: false)
+        let flow = threeStepFlow(storage: makeStorage())
+        flow.recordIfNeeded(leaving: step(health, in: flow))
         #expect(flow.value(for: health) == true)
+    }
+
+    @Test("Swiping past a required, skippable step records false and leaves the flow unsatisfied")
+    func swipingPastRequiredSkippableStepStaysUnsatisfied() {
+        let flow = threeStepFlow(storage: makeStorage())
+        let locationStep = step(location, in: flow)
+        #expect(locationStep.isRequired)
+        #expect(locationStep.isSkippable)
+
+        flow.recordIfNeeded(leaving: locationStep)
+
+        #expect(flow.value(for: location) == false)
+        #expect(!flow.allRequiredSatisfied)
     }
 
     @Test("A real answer is never overwritten by the leaving backfill")
     func leavingDoesNotOverwriteARealAnswer() {
+        let flow = threeStepFlow(storage: makeStorage())
+        flow.record(true, for: photos)
+        flow.recordIfNeeded(leaving: step(photos, in: flow))
+        #expect(flow.value(for: photos) == true)
+
+        flow.record(false, for: health)
+        flow.recordIfNeeded(leaving: step(health, in: flow))
+        #expect(flow.value(for: health) == false)
+    }
+
+    @Test("Reset clears every step, the welcome, and extra IDs")
+    func resetClearsEverything() {
         let storage = makeStorage()
-        let flow = threeStepFlow(storage: storage)
+        let flow = threeStepFlow(welcome: welcomeID, storage: storage)
+        let extra = OnboardingStepID("com.dryan.crumbdb.extra")
+        flow.record(true, for: welcomeID)
         flow.record(true, for: health)
-        flow.recordIfNeeded(leaving: health, isSkippable: true)
-        #expect(flow.value(for: health) == true)
+        flow.record(true, for: location)
+        flow.record(true, for: photos)
+        storage.setValue(true, for: extra)
+
+        flow.reset(including: [extra])
+        #expect(flow.needsWelcome)
+        #expect(flow.needsOnboarding)
+        #expect(flow.value(for: welcomeID) == nil)
+        #expect(flow.value(for: extra) == nil)
+
+        flow.record(true, for: welcomeID)
+        flow.record(true, for: health)
+        flow.reset()
+        #expect(flow.needsWelcome)
+        #expect(flow.value(for: welcomeID) == nil)
+        #expect(flow.value(for: health) == nil)
+    }
+
+    @Test("A flow without a welcome never needs one")
+    func noWelcomeNeverNeedsWelcome() {
+        let flow = threeStepFlow(storage: makeStorage())
+        #expect(flow.welcomeID == nil)
+        #expect(!flow.needsWelcome)
+    }
+
+    @Test("A fresh flow with a welcome needs onboarding even when every step is answered")
+    func welcomeAloneKeepsOnboardingOpen() {
+        let flow = threeStepFlow(welcome: welcomeID, storage: makeStorage())
+        flow.record(true, for: health)
+        flow.record(true, for: location)
+        flow.record(true, for: photos)
+        #expect(flow.needsWelcome)
+        #expect(flow.needsOnboarding)
+    }
+
+    @Test("Recording the welcome clears needsWelcome and, with steps answered, needsOnboarding")
+    func recordingWelcomeFinishesOnboarding() {
+        let flow = threeStepFlow(welcome: welcomeID, storage: makeStorage())
+        flow.record(true, for: health)
+        flow.record(true, for: location)
+        flow.record(true, for: photos)
+
+        flow.record(true, for: welcomeID)
+        #expect(!flow.needsWelcome)
+        #expect(!flow.needsOnboarding)
+    }
+
+    @Test("The next step needed ignores the welcome")
+    func nextStepNeededIgnoresWelcome() {
+        let flow = threeStepFlow(welcome: welcomeID, storage: makeStorage())
+        #expect(flow.nextStepNeeded?.id == health)
+    }
+
+    private final class Flag: @unchecked Sendable {
+        var value = false
+    }
+
+    @Test("Recording a step notifies Observation tracking of needsOnboarding")
+    func recordingTriggersObservation() {
+        let flow = threeStepFlow(storage: makeStorage())
+        let flag = Flag()
+        withObservationTracking({ _ = flow.needsOnboarding }, onChange: { flag.value = true })
+        #expect(!flag.value)
+
+        flow.record(true, for: health)
+        #expect(flag.value)
     }
 }
 
