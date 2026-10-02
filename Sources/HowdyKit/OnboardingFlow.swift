@@ -115,6 +115,13 @@ public final class OnboardingFlow {
         }
     }
 
+    /// Clears one record back to unrecorded. Development/testing, like
+    /// `reset`: lets a tool set up "this step was never seen" by itself.
+    public func clear(_ id: OnboardingStepID) {
+        storage.setValue(nil, for: id)
+        changeToken += 1
+    }
+
     /// Clears every step's record back to unrecorded, plus the welcome's when
     /// the flow has one, and any IDs in `additionalIDs` that an app stores
     /// alongside the flow without them being steps. For development/testing - a shipped

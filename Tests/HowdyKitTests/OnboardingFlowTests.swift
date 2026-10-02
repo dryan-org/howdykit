@@ -128,6 +128,17 @@ struct OnboardingFlowTests {
         #expect(flow.value(for: health) == false)
     }
 
+    @Test("Clear puts one step back to unrecorded and leaves the rest")
+    func clearOneStep() {
+        let storage = makeStorage()
+        let flow = threeStepFlow(storage: storage)
+        flow.record(true, for: health)
+        flow.record(false, for: location)
+        flow.clear(health)
+        #expect(flow.value(for: health) == nil)
+        #expect(flow.value(for: location) == false)
+    }
+
     @Test("Reset clears every step, the welcome, and extra IDs")
     func resetClearsEverything() {
         let storage = makeStorage()
