@@ -1,11 +1,17 @@
+import HowdyKit
 import SwiftUI
 
 /// One step: an optional header, arbitrary content, and up to two actions,
 /// themed from the environment (`.onboardingTheme(_:)`, set once at the app's
 /// root). This renders a single step only;
 /// `OnboardingFlowView` sequences a list of these into an actual flow.
+///
+/// Inside an `OnboardingFlowView` the view draws header and content only and
+/// publishes its actions upward; the flow renders them once, below the
+/// pages. Used on its own (no flow around it), it draws its own footer.
 public struct OnboardingStepView<Content: View>: View {
     @Environment(\.onboardingTheme) private var theme
+    @Environment(\.onboardingStepID) private var stepID
     private let header: OnboardingHeader?
     private let primaryAction: OnboardingAction
     private let secondaryAction: OnboardingAction?
@@ -27,20 +33,38 @@ public struct OnboardingStepView<Content: View>: View {
         VStack(spacing: 0) {
             GeometryReader { geometry in
                 ScrollView {
-                    VStack(spacing: 20) {
-                        if let header {
-                            headerView(header)
-                        }
-                        content
-                    }
+                    card
                     .padding(24)
                     .frame(maxWidth: 560)
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height)
                 }
             }
-            footer
+            if stepID == nil {
+                OnboardingFooter(actions: OnboardingActions(primary: primaryAction, secondary: secondaryAction))
+            }
         }
         .background(theme.background.ignoresSafeArea())
+        .preference(key: OnboardingActionsKey.self, value: publishedActions)
+    }
+
+    @ViewBuilder
+    private var card: some View {
+        if let cardBackground = theme.cardBackground {
+            stack
+                .padding(24)
+                .background(RoundedRectangle(cornerRadius: 20).fill(cardBackground))
+        } else {
+            stack
+        }
+    }
+
+    private var stack: some View {
+        VStack(spacing: 20) {
+            if let header {
+                headerView(header)
+            }
+            content
+        }
     }
 
     @ViewBuilder
@@ -49,7 +73,7 @@ public struct OnboardingStepView<Content: View>: View {
             if let icon = header.icon {
                 Image(systemName: icon)
                     .font(.system(size: 64))
-                    .foregroundStyle(theme.primaryColor)
+                    .foregroundStyle(theme.accentColor)
             }
             Text(header.title)
                 .font(theme.titleFont)
@@ -63,41 +87,8 @@ public struct OnboardingStepView<Content: View>: View {
         }
     }
 
-    @ViewBuilder
-    private var footer: some View {
-        VStack(spacing: 4) {
-            Group {
-                if primaryAction.isProminent {
-                    primaryButton.buttonStyle(.borderedProminent)
-                } else {
-                    primaryButton.buttonStyle(.bordered)
-                }
-            }
-            .controlSize(.large)
-
-            if let secondaryAction {
-                Button(secondaryAction.title, action: secondaryAction.handler)
-                    .buttonStyle(.plain)
-                    .font(.subheadline)
-                    .foregroundStyle(theme.primaryColor.opacity(0.85))
-                    .frame(minHeight: 44)
-            }
-        }
-        // `.borderedProminent`/`.bordered` otherwise fall back to the
-        // system accent color, not the theme - without this the header text
-        // re-themes live but the button never does.
-        .tint(theme.primaryColor)
-        .padding(.horizontal, 28)
-        .padding(.top, 8)
-        .padding(.bottom, 32)
-        .frame(maxWidth: 560)
-        .frame(maxWidth: .infinity)
-    }
-
-    private var primaryButton: some View {
-        Button(action: primaryAction.handler) {
-            Text(primaryAction.title)
-                .frame(maxWidth: .infinity)
-        }
+    private var publishedActions: [OnboardingStepID: OnboardingActions] {
+        guard let stepID else { return [:] }
+        return [stepID: OnboardingActions(primary: primaryAction, secondary: secondaryAction)]
     }
 }

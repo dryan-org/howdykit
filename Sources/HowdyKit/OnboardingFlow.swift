@@ -98,6 +98,30 @@ public final class OnboardingFlow {
         changeToken += 1
     }
 
+    /// Records `true` for every unanswered step that `isSatisfied` reports
+    /// as already satisfied outside the flow (a system permission the OS
+    /// already granted, say). Steps with an answer are left alone. Call it
+    /// before presenting the flow, and again when the app returns to the
+    /// foreground, since Settings may have changed a permission meanwhile.
+    public func reconcile(isSatisfied: (OnboardingStepConfig) -> Bool) {
+        var recorded = false
+        for step in steps where storage.value(for: step.id) == nil && isSatisfied(step) {
+            storage.setValue(true, for: step.id)
+            recorded = true
+        }
+        // Only bump when something changed, so a no-op reconcile re-renders nothing.
+        if recorded {
+            changeToken += 1
+        }
+    }
+
+    /// Clears one record back to unrecorded. Development/testing, like
+    /// `reset`: lets a tool set up "this step was never seen" by itself.
+    public func clear(_ id: OnboardingStepID) {
+        storage.setValue(nil, for: id)
+        changeToken += 1
+    }
+
     /// Clears every step's record back to unrecorded, plus the welcome's when
     /// the flow has one, and any IDs in `additionalIDs` that an app stores
     /// alongside the flow without them being steps. For development/testing - a shipped
