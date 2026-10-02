@@ -45,7 +45,7 @@ public struct OnboardingStepView<Content: View>: View {
                 }
             }
             if stepID == nil {
-                OnboardingFooter(primary: primaryAction, secondary: secondaryAction)
+                OnboardingFooter(actions: OnboardingActions(primary: primaryAction, secondary: secondaryAction))
             }
         }
         .background(theme.background.ignoresSafeArea())

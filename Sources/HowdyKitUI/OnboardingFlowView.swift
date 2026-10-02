@@ -128,17 +128,18 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
         }
     }
 
-    @ViewBuilder
     private var footer: some View {
-        if pages.indices.contains(currentIndex), let current = actions[pages[currentIndex].id] {
-            OnboardingFooter(primary: current.primary, secondary: current.secondary)
-        } else {
-            // Same footprint while a page's actions haven't arrived yet, so
-            // the pages (and the dots at their bottom) never shift to fill a
-            // missing footer.
-            OnboardingFooter(primary: OnboardingAction(title: "", handler: {}), secondary: nil)
-                .hidden()
-        }
+        // One permanent view, never swapped for another, and never animated:
+        // a page change is wrapped in `withAnimation`, and any animated change
+        // in here would move the pages (and the dots at their bottom) while
+        // they slide.
+        OnboardingFooter(actions: currentActions)
+            .transaction { $0.animation = nil }
+    }
+
+    private var currentActions: OnboardingActions? {
+        guard pages.indices.contains(currentIndex) else { return nil }
+        return actions[pages[currentIndex].id]
     }
 
     private func advance() {

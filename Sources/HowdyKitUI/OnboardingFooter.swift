@@ -1,15 +1,23 @@
 import SwiftUI
 
 /// The button area every screen shares, rendered once by
-/// `OnboardingFlowView` below the pages. Both slots always take their space,
-/// visible or not, so the main button and the Skip line sit at the same spot
-/// on the welcome, on a step with Skip, and on one without; nothing jumps
-/// between pages.
+/// `OnboardingFlowView` below the pages. Its height never changes: both
+/// slots always take their space, and `actions == nil` (a page whose actions
+/// haven't arrived yet) hides the buttons rather than removing them, so the
+/// main button and the Skip line sit at the same spot on every screen and
+/// nothing above the footer moves between pages.
 struct OnboardingFooter: View {
-    let primary: OnboardingAction
-    let secondary: OnboardingAction?
+    let actions: OnboardingActions?
 
     @Environment(\.onboardingTheme) private var theme
+
+    private var primary: OnboardingAction {
+        actions?.primary ?? OnboardingAction(title: "", handler: {})
+    }
+
+    private var secondary: OnboardingAction? {
+        actions?.secondary
+    }
 
     var body: some View {
         VStack(spacing: 4) {
@@ -21,10 +29,11 @@ struct OnboardingFooter: View {
                 }
             }
             .controlSize(.large)
+            .opacity(actions == nil ? 0 : 1)
+            .disabled(actions == nil)
             // No insertion/removal animation when prominence flips between
             // pages: an outgoing and incoming button overlapping for a frame
-            // makes the footer momentarily taller and everything above it
-            // (content, page dots) visibly settles.
+            // makes the footer momentarily taller.
             .transition(.identity)
 
             // One stable button, hidden rather than swapped for a placeholder,
