@@ -15,7 +15,7 @@ XcodeGen (`project.yml`):
 packages:
   HowdyKit:
     url: https://github.com/dryan-org/howdykit
-    from: "0.1.0"
+    from: "1.0.0"
 targets:
   <App>:
     dependencies:
