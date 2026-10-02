@@ -1,7 +1,7 @@
 /// Identifies one step across app versions. Reverse-DNS by convention
-/// (`com.dryan.crumbdb.reqs.health`) so records never collide across apps if
+/// (`com.example.app.reqs.health`) so records never collide across apps if
 /// they ever land in a shared place, and so a step added a year from now
-/// (`com.dryan.crumbdb.reqs.local-network`) is a new, unrecognized ID rather
+/// (`com.example.app.reqs.local-network`) is a new, unrecognized ID rather
 /// than colliding with anything already stored.
 ///
 /// Required-ness is deliberately not part of the ID. It lives on

@@ -10,12 +10,12 @@ struct OnboardingFlowTests {
         return UserDefaultsOnboardingStorage(defaults: defaults)
     }
 
-    private let health = OnboardingStepID("com.dryan.crumbdb.reqs.health")
-    private let location = OnboardingStepID("com.dryan.crumbdb.reqs.location")
-    private let photos = OnboardingStepID("com.dryan.crumbdb.reqs.photos")
-    private let localNetwork = OnboardingStepID("com.dryan.crumbdb.reqs.local-network")
+    private let health = OnboardingStepID("com.example.app.reqs.health")
+    private let location = OnboardingStepID("com.example.app.reqs.location")
+    private let photos = OnboardingStepID("com.example.app.reqs.photos")
+    private let localNetwork = OnboardingStepID("com.example.app.reqs.local-network")
 
-    private let welcomeID = OnboardingStepID("com.dryan.crumbdb.welcome")
+    private let welcomeID = OnboardingStepID("com.example.app.welcome")
 
     private func threeStepFlow(
         welcome: OnboardingStepID? = nil,
@@ -143,7 +143,7 @@ struct OnboardingFlowTests {
     func resetClearsEverything() {
         let storage = makeStorage()
         let flow = threeStepFlow(welcome: welcomeID, storage: storage)
-        let extra = OnboardingStepID("com.dryan.crumbdb.extra")
+        let extra = OnboardingStepID("com.example.app.extra")
         flow.record(true, for: welcomeID)
         flow.record(true, for: health)
         flow.record(true, for: location)
@@ -250,7 +250,7 @@ struct OnboardingFlowTests {
 
 @Suite("UserDefaults storage")
 struct UserDefaultsOnboardingStorageTests {
-    private let stepID = OnboardingStepID("com.dryan.crumbdb.reqs.health")
+    private let stepID = OnboardingStepID("com.example.app.reqs.health")
 
     private func makeDefaults() -> UserDefaults {
         UserDefaults(suiteName: "howdykit-tests-\(UUID().uuidString)")!
@@ -273,10 +273,10 @@ struct UserDefaultsOnboardingStorageTests {
     @Test("Two prefixes in the same suite never collide")
     func prefixesIsolate() {
         let defaults = makeDefaults()
-        let crumbdb = UserDefaultsOnboardingStorage(defaults: defaults, keyPrefix: "crumbdb.")
-        let marie = UserDefaultsOnboardingStorage(defaults: defaults, keyPrefix: "marie.")
-        crumbdb.setValue(true, for: stepID)
-        #expect(crumbdb.value(for: stepID) == true)
-        #expect(marie.value(for: stepID) == nil)
+        let appA = UserDefaultsOnboardingStorage(defaults: defaults, keyPrefix: "appA.")
+        let appB = UserDefaultsOnboardingStorage(defaults: defaults, keyPrefix: "appB.")
+        appA.setValue(true, for: stepID)
+        #expect(appA.value(for: stepID) == true)
+        #expect(appB.value(for: stepID) == nil)
     }
 }

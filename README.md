@@ -1,6 +1,6 @@
 # HowdyKit
 
-Shared onboarding for CrumbDB, Marie, and future apps: one storage layer every
+Shared onboarding for a family of apps: one storage layer every
 platform target uses the same way, and themeable step views for the platforms
 that run a real multi-step flow.
 
@@ -10,7 +10,7 @@ Foundation and Observation only, no SwiftUI, no platform-specific UI dependency.
 target that only needs "is setup done" can depend on just this.
 
 - **`OnboardingStepID`**: identifies one step across app versions. Reverse-DNS
-  by convention (`com.dryan.crumbdb.reqs.health`) so records never collide
+  by convention (`com.example.app.reqs.health`) so records never collide
   across apps, and a step added later is just a new, unrecognized ID.
   Required-ness is not part of the ID, it lives on `OnboardingStepConfig`
   instead, so flipping a step between required and optional later never
@@ -65,12 +65,12 @@ layer never compiles SwiftUI it doesn't use.
 - **`OnboardingTheme`**: primary color (text) and accent color (header icon, buttons, Skip, page dot; defaults to primary), optional card background (`AnyShapeStyle`, any
   material or color; nil means no card), fonts, and a custom background view, all defaulted to
   plain system styling. Provided through the environment with
-  `.onboardingTheme(_:)` at the root. CrumbDB's brand (custom font, topo
-  background) and Marie's plain look are the same view with different themes,
+  `.onboardingTheme(_:)` at the root. A brand (custom font, custom
+  background) and a plain look are the same view with different themes,
   not different views.
 - **`OnboardingHeader`**: icon (optional), title, headline (optional).
 - **`OnboardingAction`**: a title and a handler, not a state machine.
-  CrumbDB's primary button changes label as permission state changes (Allow
+  A permission step's primary button changes label as its state changes (Allow
   Location → Open Settings → Next); that's the app's own logic recomputing
   which `OnboardingAction` to pass on each render, the view itself just
   renders whatever it's given right now.
@@ -82,8 +82,8 @@ layer never compiles SwiftUI it doesn't use.
   forced on it (a hero layout usually wants more room than that), no skip,
   a single action that records `true` for the flow's `welcomeID` itself.
   Still themed and still the same `OnboardingFlow` API as every other step,
-  just its own config so the layout can be as custom as CrumbDB's brand intro or Marie's
-  plain "Welcome to Marie" needs. Publishes its action to the flow's shared
+  just its own config so the layout can be as custom as a brand intro or as plain as a
+  one-line "Welcome" needs. Publishes its action to the flow's shared
   footer the same way a step does.
 - **`OnboardingFlowView`**: shows the welcome first when the flow still needs
   it, then sequences the steps a flow still needs into a paged container.
@@ -99,7 +99,7 @@ layer never compiles SwiftUI it doesn't use.
   the last step advances and `onPageShown` with the step ID each time a page is shown (for analytics). Pass `isAlreadySatisfied:` (for example, "is the
   OS permission already granted") and steps it accepts are recorded `true`
   through `flow.reconcile` before paging, and again when the app becomes
-  active, so they never get a page. This is the turnkey piece: CrumbDB and Marie get
+  active, so they never get a page. This is the turnkey piece: every app gets
   the same flow mechanics, not just the same per-step look.
 
 All three are genuinely turnkey. An app can still build its own container

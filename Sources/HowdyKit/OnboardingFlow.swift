@@ -63,7 +63,7 @@ public final class OnboardingFlow {
     }
 
     /// Whether every required step has an affirmative record. Drives
-    /// whether a flow's closing action (CrumbDB's "Get Started") may fire -
+    /// whether a flow's closing action ("Get Started") may fire:
     /// a step answered `false` (denied/declined) still counts as answered
     /// for `needsOnboarding`, but not as satisfied here.
     public var allRequiredSatisfied: Bool {
