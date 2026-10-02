@@ -1,23 +1,22 @@
 import SwiftUI
 
 /// One step: an optional header, arbitrary content, and up to two actions,
-/// themed by the app that composes it. This renders a single step only;
+/// themed from the environment (`.onboardingTheme(_:)`, set once at the app's
+/// root). This renders a single step only;
 /// `OnboardingFlowView` sequences a list of these into an actual flow.
 public struct OnboardingStepView<Content: View>: View {
-    private let theme: OnboardingTheme
+    @Environment(\.onboardingTheme) private var theme
     private let header: OnboardingHeader?
     private let primaryAction: OnboardingAction
     private let secondaryAction: OnboardingAction?
     private let content: Content
 
     public init(
-        theme: OnboardingTheme = .default,
         header: OnboardingHeader? = nil,
         primaryAction: OnboardingAction,
         secondaryAction: OnboardingAction? = nil,
         @ViewBuilder content: () -> Content
     ) {
-        self.theme = theme
         self.header = header
         self.primaryAction = primaryAction
         self.secondaryAction = secondaryAction
@@ -84,9 +83,13 @@ public struct OnboardingStepView<Content: View>: View {
                     .frame(minHeight: 44)
             }
         }
+        // `.borderedProminent`/`.bordered` otherwise fall back to the
+        // system accent color, not the theme - without this the header text
+        // re-themes live but the button never does.
+        .tint(theme.primaryColor)
         .padding(.horizontal, 28)
         .padding(.top, 8)
-        .padding(.bottom, 12)
+        .padding(.bottom, 32)
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
     }

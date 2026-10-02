@@ -6,7 +6,7 @@ that run a real multi-step flow.
 
 ## Storage layer
 
-Pure Foundation, no SwiftUI, no platform-specific UI dependency. A watch
+Foundation and Observation only, no SwiftUI, no platform-specific UI dependency. A watch
 target that only needs "is setup done" can depend on just this.
 
 - **`OnboardingStepID`**: identifies one step across app versions. Reverse-DNS
@@ -27,18 +27,31 @@ target that only needs "is setup done" can depend on just this.
   separate device with its own sandbox; bridge it with
   `NSUbiquitousKeyValueStore` or `WatchConnectivity` instead, not App Groups.
 - **`OnboardingFlow`**: ties a step list to storage.
-  - `needsOnboarding`: true while anything is unrecorded. The entire watchOS
+  - `welcomeID` / `needsWelcome`: an optional welcome ID the flow tracks but
+    does not page (it isn't one of `steps`). `needsWelcome` is true while that
+    ID is unrecorded, and always false for a flow created without `welcome:`.
+    `reset()` clears it along with the steps.
+  - `needsOnboarding`: true while the welcome or any step is unrecorded. The entire watchOS
     surface is this one property, no view, no step model needed there.
   - `nextStepNeeded`: the first unrecorded step, in declaration order.
   - `allRequiredSatisfied`: every required step answered `true` specifically,
     not just answered, declining a required step doesn't satisfy it.
-  - `recordIfNeeded(leaving:isSkippable:)`: call when a step's view is being
-    left (its own button, or a swipe past it in a paged container) and may
-    still be unanswered. Writing nothing on a swipe-past would make the step
-    look never-seen and show it again later; this backfills the step's
-    default exactly once, `true` for a step with no skip path (there's only
-    one way to leave it), `false` for a skippable one (leaving it unanswered
-    is the same as tapping Skip). Never overwrites a real answer.
+  - `recordIfNeeded(leaving:)`: call with the step's `OnboardingStepConfig`
+    when its view is being left (its own button, or a swipe past it in a
+    paged container) and may still be unanswered. Writing nothing on a
+    swipe-past would make the step look never-seen and show it again later;
+    this backfills the step's default exactly once, reading
+    `step.isSkippable`: `false` for a skippable step (leaving it unanswered
+    is the same as tapping Skip), `true` for a non-skippable,
+    acknowledge-only step (there's only one way to leave it). Never
+    overwrites a real answer.
+- **`OnboardingStepConfig`**: a step's `id` plus two independent flags.
+  `isRequired`: the flow isn't satisfied until the step is recorded `true`.
+  `isSkippable` (default `true`): the step can be left unanswered, which
+  counts as declining. So swiping past a required permission step records
+  `false` and `allRequiredSatisfied` stays `false`; it never counts as
+  granted. A non-skippable step is acknowledge-only (an info screen) and
+  is normally not required.
 
 ## View layer (`HowdyKitUI`, a separate product)
 
@@ -47,9 +60,10 @@ layer never compiles SwiftUI it doesn't use.
 
 - **`OnboardingTheme`**: primary color, card background (`ShapeStyle`, any
   material or color), fonts, and a custom background view, all defaulted to
-  plain system styling. CrumbDB's brand (custom font, topo background) and
-  Marie's plain look are the same view with different themes passed in, not
-  different views.
+  plain system styling. Provided through the environment with
+  `.onboardingTheme(_:)` at the root. CrumbDB's brand (custom font, topo
+  background) and Marie's plain look are the same view with different themes,
+  not different views.
 - **`OnboardingHeader`**: icon (optional), title, headline (optional).
 - **`OnboardingAction`**: a title and a handler, not a state machine.
   CrumbDB's primary button changes label as permission state changes (Allow
@@ -60,16 +74,19 @@ layer never compiles SwiftUI it doesn't use.
   primary/optional-secondary actions, themed. Renders one step.
 - **`OnboardingWelcomeView`**: the first-run screen. No header/content split
   forced on it (a hero layout usually wants more room than that), no skip,
-  a single action that records `true` for its step ID itself. Still themed
-  and still the same `OnboardingFlow` API as every other step, just its own
-  config so the layout can be as custom as CrumbDB's brand intro or Marie's
+  a single action that records `true` for the flow's `welcomeID` itself.
+  Still themed and still the same `OnboardingFlow` API as every other step,
+  just its own config so the layout can be as custom as CrumbDB's brand intro or Marie's
   plain "Welcome to Marie" needs.
-- **`OnboardingFlowView`**: sequences the steps a flow still needs into a
-  paged container. An app hands it per-step content (keyed by
+- **`OnboardingFlowView`**: shows the welcome first when the flow still needs
+  it, then sequences the steps a flow still needs into a paged container.
+  Recording the welcome moves it on to the steps on its own, so an app
+  doesn't branch on `needsWelcome` itself. An app hands it per-step content (keyed by
   `OnboardingStepConfig`) and an `advance` closure to call once that step's
   own action has recorded an answer; the container handles paging,
-  swipe-past backfill (`flow.recordIfNeeded(leaving:isSkippable:)`, using
-  `!step.isRequired` as the skippable default), and calls `onFinished` once
+  swipe-past backfill (`flow.recordIfNeeded(leaving: step)`, driven by
+  `step.isSkippable`; swiping past a required step is allowed and records
+  `false`), and calls `onFinished` once
   the last step advances. This is the turnkey piece: CrumbDB and Marie get
   the same flow mechanics, not just the same per-step look.
 

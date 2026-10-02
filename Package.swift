@@ -4,10 +4,13 @@ import PackageDescription
 let package = Package(
     name: "HowdyKit",
     platforms: [
-        .iOS(.v15),
-        .macOS(.v12),
-        .watchOS(.v8),
-        .tvOS(.v15),
+        // The apps target iOS 27, so the floor follows them. Observation
+        // (`@Observable`) is what makes `OnboardingFlow` itself reactive,
+        // not just the views reading it.
+        .iOS("27.0"),
+        .macOS("27.0"),
+        .watchOS("27.0"),
+        .tvOS("27.0"),
     ],
     products: [
         // Storage only: step identity, tri-state records, flow queries. No
@@ -23,5 +26,6 @@ let package = Package(
         .target(name: "HowdyKit"),
         .testTarget(name: "HowdyKitTests", dependencies: ["HowdyKit"]),
         .target(name: "HowdyKitUI", dependencies: ["HowdyKit"]),
+        .testTarget(name: "HowdyKitUITests", dependencies: ["HowdyKitUI"]),
     ]
 )
