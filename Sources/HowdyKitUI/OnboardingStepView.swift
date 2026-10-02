@@ -89,7 +89,7 @@ public struct OnboardingStepView<Content: View>: View {
         .tint(theme.primaryColor)
         .padding(.horizontal, 28)
         .padding(.top, 8)
-        .padding(.bottom, 32)
+        .padding(.bottom, 50)
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
     }
