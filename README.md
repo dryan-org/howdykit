@@ -1,10 +1,10 @@
 # HowdyKit
 
 Shared onboarding for CrumbDB, Marie, and future apps: one storage layer every
-platform target uses the same way, and (coming next) themeable step views for
-the platforms that run a real multi-step flow.
+platform target uses the same way, and themeable step views for the platforms
+that run a real multi-step flow.
 
-## Storage layer (this package, today)
+## Storage layer
 
 Pure Foundation, no SwiftUI, no platform-specific UI dependency. A watch
 target that only needs "is setup done" can depend on just this.
@@ -40,10 +40,43 @@ target that only needs "is setup done" can depend on just this.
     one way to leave it), `false` for a skippable one (leaving it unanswered
     is the same as tapping Skip). Never overwrites a real answer.
 
-## Not yet built
+## View layer (`HowdyKitUI`, a separate product)
 
-The view layer: a themeable step view (header/content/actions) and a
-welcome-style config for the one no-skip, custom-view, first-run-only screen
-that isn't a `reqs.*` step at all. Each app composes its own container around
-these (CrumbDB's swipeable pages, Marie's branching `NavigationStack`, a
-future tvOS focus-driven push flow), the kit doesn't own sequencing.
+Separate from `HowdyKit` so a watchOS target depending only on the storage
+layer never compiles SwiftUI it doesn't use.
+
+- **`OnboardingTheme`**: primary color, card background (`ShapeStyle`, any
+  material or color), fonts, and a custom background view, all defaulted to
+  plain system styling. CrumbDB's brand (custom font, topo background) and
+  Marie's plain look are the same view with different themes passed in, not
+  different views.
+- **`OnboardingHeader`**: icon (optional), title, headline (optional).
+- **`OnboardingAction`**: a title and a handler, not a state machine.
+  CrumbDB's primary button changes label as permission state changes (Allow
+  Location → Open Settings → Next); that's the app's own logic recomputing
+  which `OnboardingAction` to pass on each render, the view itself just
+  renders whatever it's given right now.
+- **`OnboardingStepView`**: header + arbitrary `@ViewBuilder` content +
+  primary/optional-secondary actions, themed. This is the whole per-step
+  template.
+
+Not part of this: a welcome screen type (it's meant to be a unique view per
+app, not templated, see below) or any container that sequences multiple
+steps. Each app composes its own (CrumbDB's swipeable pages, Marie's
+branching `NavigationStack`, a future tvOS focus-driven push flow) around
+`OnboardingStepView` and `OnboardingFlow`; the kit doesn't own sequencing.
+
+A swipeable container specifically needs to call
+`flow.recordIfNeeded(leaving:isSkippable:)` from its page-change handler, not
+just from each step's own button, so a swipe past an unanswered step doesn't
+leave it looking never-seen.
+
+## Welcome
+
+Deliberately not a `HowdyKitUI` type. It's one no-skip, first-run-only screen
+per app, and every app's version of it is different enough (CrumbDB's brand
+intro vs. Marie's plain "Welcome to Marie") that templating it would fight
+the one place where a truly custom view is the right call. Build it as a
+normal view, give it a single "Continue" action, and call
+`flow.record(true, for:)` directly, there's no second storage mechanism for
+it, it's the same `OnboardingFlow` API as every other step.
