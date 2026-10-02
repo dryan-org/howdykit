@@ -9,11 +9,13 @@ import SwiftUI
 /// mechanics, not just the same per-step look.
 ///
 /// The welcome is a real page, not a separate screen swapped out before the
-/// TabView, so Continue slides to the first step exactly like a swipe and the
+/// pager, so Continue slides to the first step exactly like a swipe and the
 /// user can swipe back to it.
 ///
-/// One shared footer sits below the pages, so the page dots render above the
-/// buttons. Each page keeps owning its actions and state and publishes them
+/// The pager is a paging `ScrollView` (not `TabView(.page)`, whose
+/// programmatic changes don't slide and whose dots can go missing). One
+/// shared footer sits below the pages, with the kit's own page dots above
+/// the buttons. Each page keeps owning its actions and state and publishes them
 /// upward (`OnboardingActions`); this view draws the footer for the page
 /// currently shown.
 ///
@@ -32,7 +34,7 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.onboardingTheme) private var theme
     @State private var actions: [OnboardingStepID: OnboardingActions] = [:]
-    @State private var currentIndex = 0
+    @State private var currentPageID: OnboardingStepID?
     @State private var highestVisitedIndex = 0
     // `init` runs on every parent re-render (and every recorded answer
     // re-renders the parent, the flow being observable); `@State` keeps the
@@ -64,12 +66,16 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
         self.isAlreadySatisfied = isAlreadySatisfied
         self.stepContent = stepContent
         flow.reconcile(isSatisfied: isAlreadySatisfied)
-        _pages = State(initialValue: OnboardingFlowPage.pending(in: flow, includeWelcome: true))
+        let pages = OnboardingFlowPage.pending(in: flow, includeWelcome: true)
+        _pages = State(initialValue: pages)
+        _currentPageID = State(initialValue: pages.first?.id)
     }
 
     public var body: some View {
         VStack(spacing: 0) {
             content
+            OnboardingPageIndicator(count: pages.count, current: currentIndex)
+                .transaction { $0.animation = nil }
             footer
         }
         // The pages draw their own background; this covers the footer strip.
@@ -89,34 +95,37 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
         if pages.isEmpty {
             Color.clear.onAppear(perform: onFinished)
         } else {
-            TabView(selection: $currentIndex) {
-                ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
-                    Group {
-                        if let step = page.step {
-                            stepContent(step, advance)
-                        } else if let welcome {
-                            welcome()
+            ScrollView(.horizontal) {
+                // Not lazy: a handful of pages, created up front so none is
+                // created mid-slide.
+                HStack(spacing: 0) {
+                    ForEach(pages, id: \.id) { page in
+                        Group {
+                            if let step = page.step {
+                                stepContent(step, advance)
+                            } else if let welcome {
+                                welcome()
+                            }
                         }
+                        .containerRelativeFrame([.horizontal, .vertical])
+                        .environment(\.onboardingStepID, page.id)
+                        .id(page.id)
                     }
-                    .environment(\.onboardingStepID, page.id)
-                    .tag(index)
                 }
+                .scrollTargetLayout()
             }
-            #if os(iOS)
-            // `.automatic` shows the page dots CrumbDB's own onboarding
-            // already has (and hides them for a single page), not suppress
-            // them - `.never` also leaves the space iOS reserves for the
-            // control empty instead of actually removing it.
-            .tabViewStyle(.page(indexDisplayMode: .automatic))
-            #endif
-            .onChange(of: currentIndex) { _, newIndex in
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $currentPageID)
+            .scrollIndicators(.hidden)
+            .scrollClipDisabled(false)
+            .onChange(of: currentPageID) { _, _ in
                 // A swipe can only move one page, but handle a programmatic
                 // jump of more than one too: backfill every page passed over.
-                guard newIndex > highestVisitedIndex else { return }
-                for passedIndex in highestVisitedIndex..<newIndex {
+                let newIndex = currentIndex
+                for passedIndex in OnboardingFlowPage.indicesPassed(from: highestVisitedIndex, to: newIndex) {
                     backfill(pages[passedIndex])
                 }
-                highestVisitedIndex = newIndex
+                highestVisitedIndex = max(highestVisitedIndex, newIndex)
             }
             // The welcome records itself (`OnboardingWelcomeView`); slide on
             // once it has, if it's still the page on screen.
@@ -137,6 +146,10 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
             .transaction { $0.animation = nil }
     }
 
+    private var currentIndex: Int {
+        pages.firstIndex { $0.id == currentPageID } ?? 0
+    }
+
     private var currentActions: OnboardingActions? {
         guard pages.indices.contains(currentIndex) else { return nil }
         return actions[pages[currentIndex].id]
@@ -144,9 +157,8 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
 
     private func advance() {
         if currentIndex + 1 < pages.count {
-            // A bare index change jumps; wrapped, the page slides like a swipe.
-            withAnimation(.easeInOut) {
-                currentIndex += 1
+            withAnimation(.easeInOut(duration: 0.35)) {
+                currentPageID = pages[currentIndex + 1].id
             }
         } else {
             onFinished()
@@ -178,6 +190,8 @@ extension OnboardingFlowView where Welcome == EmptyView {
         self.isAlreadySatisfied = isAlreadySatisfied
         self.stepContent = stepContent
         flow.reconcile(isSatisfied: isAlreadySatisfied)
-        _pages = State(initialValue: OnboardingFlowPage.pending(in: flow, includeWelcome: false))
+        let pages = OnboardingFlowPage.pending(in: flow, includeWelcome: false)
+        _pages = State(initialValue: pages)
+        _currentPageID = State(initialValue: pages.first?.id)
     }
 }

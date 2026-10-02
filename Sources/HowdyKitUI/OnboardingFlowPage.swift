@@ -8,6 +8,12 @@ struct OnboardingFlowPage: Equatable {
 
     var isWelcome: Bool { step == nil }
 
+    /// The indices a move from `old` to `new` leaves behind (all of them,
+    /// for a jump of more than one page); empty when moving backward.
+    static func indicesPassed(from old: Int, to new: Int) -> Range<Int> {
+        new > old ? old..<new : 0..<0
+    }
+
     /// The pages a flow still needs, welcome first when it's wanted and
     /// unrecorded, then every unanswered step in declaration order. Reads
     /// `storage` directly rather than the flow's tracked queries: this runs

@@ -49,4 +49,12 @@ struct OnboardingFlowPageTests {
         #expect(pages.map(\.id) == [first, last])
         #expect(pages.compactMap(\.step?.id) == [first, last])
     }
+
+    @Test("Moving forward passes every index left behind; standing still or going back passes none")
+    func indicesPassed() {
+        #expect(Array(OnboardingFlowPage.indicesPassed(from: 0, to: 1)) == [0])
+        #expect(Array(OnboardingFlowPage.indicesPassed(from: 1, to: 3)) == [1, 2])
+        #expect(OnboardingFlowPage.indicesPassed(from: 2, to: 1).isEmpty)
+        #expect(OnboardingFlowPage.indicesPassed(from: 2, to: 2).isEmpty)
+    }
 }

@@ -87,7 +87,7 @@ layer never compiles SwiftUI it doesn't use.
   footer the same way a step does.
 - **`OnboardingFlowView`**: shows the welcome first when the flow still needs
   it, then sequences the steps a flow still needs into a paged container.
-  It renders one footer under the pages (page dots above the buttons) for
+  The pager is a paging `ScrollView` with the kit's own page dots, and one footer under it for
   whichever page is showing.
   Recording the welcome moves it on to the steps on its own, so an app
   doesn't branch on `needsWelcome` itself. An app hands it per-step content (keyed by
