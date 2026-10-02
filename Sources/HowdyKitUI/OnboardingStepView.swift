@@ -1,9 +1,8 @@
 import SwiftUI
 
 /// One step: an optional header, arbitrary content, and up to two actions,
-/// themed by the app that composes it. This is the whole per-step template;
-/// sequencing multiple steps into a flow (swipeable pages, a push stack,
-/// whatever a platform needs) is left to the app, not owned here.
+/// themed by the app that composes it. This renders a single step only;
+/// `OnboardingFlowView` sequences a list of these into an actual flow.
 public struct OnboardingStepView<Content: View>: View {
     private let theme: OnboardingTheme
     private let header: OnboardingHeader?
