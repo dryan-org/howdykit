@@ -133,7 +133,11 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
         if pages.indices.contains(currentIndex), let current = actions[pages[currentIndex].id] {
             OnboardingFooter(primary: current.primary, secondary: current.secondary)
         } else {
-            Color.clear.frame(height: 0)
+            // Same footprint while a page's actions haven't arrived yet, so
+            // the pages (and the dots at their bottom) never shift to fill a
+            // missing footer.
+            OnboardingFooter(primary: OnboardingAction(title: "", handler: {}), secondary: nil)
+                .hidden()
         }
     }
 

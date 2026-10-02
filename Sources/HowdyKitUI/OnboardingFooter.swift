@@ -21,18 +21,23 @@ struct OnboardingFooter: View {
                 }
             }
             .controlSize(.large)
+            // No insertion/removal animation when prominence flips between
+            // pages: an outgoing and incoming button overlapping for a frame
+            // makes the footer momentarily taller and everything above it
+            // (content, page dots) visibly settles.
+            .transition(.identity)
 
-            Group {
-                if let secondary {
-                    Button(secondary.title, action: secondary.handler)
-                        .buttonStyle(.plain)
-                        .font(.subheadline)
-                        .foregroundStyle(theme.primaryColor.opacity(0.85))
-                } else {
-                    Color.clear
-                }
-            }
-            .frame(height: 44)
+            // One stable button, hidden rather than swapped for a placeholder,
+            // for the same reason: a `Button`/`Color.clear` swap inside an
+            // animated page change briefly stacks both.
+            Button(secondary?.title ?? "", action: secondary?.handler ?? {})
+                .buttonStyle(.plain)
+                .font(.subheadline)
+                .foregroundStyle(theme.primaryColor.opacity(0.85))
+                .opacity(secondary == nil ? 0 : 1)
+                .disabled(secondary == nil)
+                .accessibilityHidden(secondary == nil)
+                .frame(height: 44)
         }
         // `.borderedProminent`/`.bordered` otherwise fall back to the
         // system accent color, not the theme.
