@@ -7,19 +7,23 @@ import SwiftUI
 /// and anything after them share the same flow mechanics, not just the same
 /// per-step look.
 ///
-/// The pending step list is captured once, at init. Steps already answered
-/// when the flow starts never appear; a step answered *during* the flow
-/// (via its own `OnboardingAction`) doesn't resize the page count out from
-/// under an in-progress swipe, it's just skipped over on `advance()`.
+/// The pending step list is captured once, when the view first appears, and
+/// held in `@State`. Steps already answered when the flow starts never
+/// appear; a step answered *during* the flow does not resize the page
+/// count out from under the user (which would shift every index, drop
+/// pages, and hide the dots once one step is left).
 public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     private let flow: OnboardingFlow
     private let welcome: (() -> Welcome)?
-    private let pendingSteps: [OnboardingStepConfig]
     private let onFinished: () -> Void
     private let stepContent: (OnboardingStepConfig, @escaping () -> Void) -> StepContent
 
     @State private var currentIndex = 0
     @State private var highestVisitedIndex = 0
+    // `init` runs on every parent re-render (and every recorded answer
+    // re-renders the parent now that the flow is observable); `@State`
+    // keeps the first snapshot and ignores the later `initialValue`s.
+    @State private var pendingSteps: [OnboardingStepConfig]
 
     /// - Parameter welcome: builds the welcome screen, shown while
     ///   `flow.needsWelcome`. Typically an `OnboardingWelcomeView`, which
@@ -38,7 +42,7 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
         self.welcome = welcome
         self.onFinished = onFinished
         self.stepContent = stepContent
-        self.pendingSteps = flow.steps.filter { flow.value(for: $0.id) == nil }
+        _pendingSteps = State(initialValue: Self.snapshot(of: flow))
     }
 
     public var body: some View {
@@ -52,13 +56,6 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
             TabView(selection: $currentIndex) {
                 ForEach(Array(pendingSteps.enumerated()), id: \.element.id) { index, step in
                     stepContent(step, advance)
-                        // Explicit identity per step. Every page shares one
-                        // opaque `StepContent` type (a single closure builds
-                        // them all), so without this SwiftUI may diff
-                        // adjacent pages as one conditional view changing
-                        // content. Added while chasing a crossed-over page
-                        // slide; not yet confirmed as the cause.
-                        .id(step.id.rawValue)
                         .tag(index)
                 }
             }
@@ -89,6 +86,13 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
             onFinished()
         }
     }
+
+    // Reads `storage` directly rather than `flow.value(for:)`: this runs
+    // inside the parent's body, and going through the flow's tracked query
+    // would make the parent re-render on every answer for no reason.
+    private static func snapshot(of flow: OnboardingFlow) -> [OnboardingStepConfig] {
+        flow.steps.filter { flow.storage.value(for: $0.id) == nil }
+    }
 }
 
 extension OnboardingFlowView where Welcome == EmptyView {
@@ -102,6 +106,6 @@ extension OnboardingFlowView where Welcome == EmptyView {
         self.welcome = nil
         self.onFinished = onFinished
         self.stepContent = stepContent
-        self.pendingSteps = flow.steps.filter { flow.value(for: $0.id) == nil }
+        _pendingSteps = State(initialValue: Self.snapshot(of: flow))
     }
 }
