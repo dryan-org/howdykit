@@ -42,7 +42,7 @@ struct OnboardingFooter: View {
             Button(secondary?.title ?? "", action: secondary?.handler ?? {})
                 .buttonStyle(.plain)
                 .font(.subheadline)
-                .foregroundStyle(theme.primaryColor.opacity(0.85))
+                .foregroundStyle(theme.accentColor.opacity(0.85))
                 .opacity(secondary == nil ? 0 : 1)
                 .disabled(secondary == nil)
                 .accessibilityHidden(secondary == nil)
@@ -50,7 +50,7 @@ struct OnboardingFooter: View {
         }
         // `.borderedProminent`/`.bordered` otherwise fall back to the
         // system accent color, not the theme.
-        .tint(theme.primaryColor)
+        .tint(theme.accentColor)
         .padding(.horizontal, 28)
         .padding(.top, 8)
         // The page control no longer overlaps this: the footer sits below

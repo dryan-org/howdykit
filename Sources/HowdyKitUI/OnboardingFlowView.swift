@@ -28,6 +28,7 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     private let flow: OnboardingFlow
     private let welcome: (() -> Welcome)?
     private let onFinished: () -> Void
+    private let onPageShown: ((OnboardingStepID) -> Void)?
     private let isAlreadySatisfied: (OnboardingStepConfig) -> Bool
     private let stepContent: (OnboardingStepConfig, @escaping () -> Void) -> StepContent
 
@@ -36,6 +37,7 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     @State private var actions: [OnboardingStepID: OnboardingActions] = [:]
     @State private var currentPageID: OnboardingStepID?
     @State private var highestVisitedIndex = 0
+    @State private var lastShownPageID: OnboardingStepID?
     // `init` runs on every parent re-render (and every recorded answer
     // re-renders the parent, the flow being observable); `@State` keeps the
     // first snapshot and ignores the later `initialValue`s.
@@ -44,6 +46,11 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     /// - Parameter welcome: builds the welcome page, shown first while the
     ///   flow's welcome is unrecorded. Typically an `OnboardingWelcomeView`,
     ///   which records the welcome itself; this view then slides on.
+    /// - Parameter onPageShown: called with the page's ID each time a page
+    ///   comes on screen (the first page on appear, then every page change),
+    ///   never twice in a row for the same page. For analytics: the IDs are
+    ///   the flow's step IDs (the welcome reports `welcomeID`), and the app
+    ///   maps them to whatever names its funnel uses.
     /// - Parameter isAlreadySatisfied: reports whether a step is already
     ///   satisfied outside the flow (a permission the OS already granted).
     ///   Such unanswered steps are recorded `true` via
@@ -56,6 +63,7 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     public init(
         flow: OnboardingFlow,
         onFinished: @escaping () -> Void = {},
+        onPageShown: ((OnboardingStepID) -> Void)? = nil,
         isAlreadySatisfied: @escaping (OnboardingStepConfig) -> Bool = { _ in false },
         @ViewBuilder welcome: @escaping () -> Welcome,
         @ViewBuilder stepContent: @escaping (OnboardingStepConfig, @escaping () -> Void) -> StepContent
@@ -63,6 +71,7 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
         self.flow = flow
         self.welcome = welcome
         self.onFinished = onFinished
+        self.onPageShown = onPageShown
         self.isAlreadySatisfied = isAlreadySatisfied
         self.stepContent = stepContent
         flow.reconcile(isSatisfied: isAlreadySatisfied)
@@ -132,7 +141,9 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
                     backfill(pages[passedIndex])
                 }
                 highestVisitedIndex = max(highestVisitedIndex, newIndex)
+                reportShown(currentPageID)
             }
+            .onAppear { reportShown(currentPageID) }
             // The welcome records itself (`OnboardingWelcomeView`); slide on
             // once it has, if it's still the page on screen.
             .onChange(of: flow.needsWelcome) { _, needsWelcome in
@@ -141,6 +152,12 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
                 }
             }
         }
+    }
+
+    private func reportShown(_ id: OnboardingStepID?) {
+        guard let shown = OnboardingFlowPage.nextShown(id, after: lastShownPageID) else { return }
+        lastShownPageID = shown
+        onPageShown?(shown)
     }
 
     private var footer: some View {
@@ -187,12 +204,14 @@ extension OnboardingFlowView where Welcome == EmptyView {
     public init(
         flow: OnboardingFlow,
         onFinished: @escaping () -> Void = {},
+        onPageShown: ((OnboardingStepID) -> Void)? = nil,
         isAlreadySatisfied: @escaping (OnboardingStepConfig) -> Bool = { _ in false },
         @ViewBuilder stepContent: @escaping (OnboardingStepConfig, @escaping () -> Void) -> StepContent
     ) {
         self.flow = flow
         self.welcome = nil
         self.onFinished = onFinished
+        self.onPageShown = onPageShown
         self.isAlreadySatisfied = isAlreadySatisfied
         self.stepContent = stepContent
         flow.reconcile(isSatisfied: isAlreadySatisfied)

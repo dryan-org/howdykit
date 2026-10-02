@@ -33,12 +33,7 @@ public struct OnboardingStepView<Content: View>: View {
         VStack(spacing: 0) {
             GeometryReader { geometry in
                 ScrollView {
-                    VStack(spacing: 20) {
-                        if let header {
-                            headerView(header)
-                        }
-                        content
-                    }
+                    card
                     .padding(24)
                     .frame(maxWidth: 560)
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height)
@@ -53,12 +48,32 @@ public struct OnboardingStepView<Content: View>: View {
     }
 
     @ViewBuilder
+    private var card: some View {
+        if let cardBackground = theme.cardBackground {
+            stack
+                .padding(24)
+                .background(RoundedRectangle(cornerRadius: 20).fill(cardBackground))
+        } else {
+            stack
+        }
+    }
+
+    private var stack: some View {
+        VStack(spacing: 20) {
+            if let header {
+                headerView(header)
+            }
+            content
+        }
+    }
+
+    @ViewBuilder
     private func headerView(_ header: OnboardingHeader) -> some View {
         VStack(spacing: 10) {
             if let icon = header.icon {
                 Image(systemName: icon)
                     .font(.system(size: 64))
-                    .foregroundStyle(theme.primaryColor)
+                    .foregroundStyle(theme.accentColor)
             }
             Text(header.title)
                 .font(theme.titleFont)
