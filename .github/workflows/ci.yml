@@ -13,5 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # swift build + swift test on the self-hosted hofn runner registered for
+  # this repo (dryan-org/reusable-workflows/.github/workflows/swift-ci.yml).
   ci:
     uses: dryan-org/reusable-workflows/.github/workflows/swift-ci.yml@v1
