@@ -95,29 +95,35 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
         if pages.isEmpty {
             Color.clear.onAppear(perform: onFinished)
         } else {
-            ScrollView(.horizontal) {
-                // Not lazy: a handful of pages, created up front so none is
-                // created mid-slide.
-                HStack(spacing: 0) {
-                    ForEach(pages, id: \.id) { page in
-                        Group {
-                            if let step = page.step {
-                                stepContent(step, advance)
-                            } else if let welcome {
-                                welcome()
+            // A horizontal ScrollView takes its height from its content, so
+            // the pages are sized from the slot the pager actually gets (the
+            // GeometryReader fills whatever the VStack leaves above the dots
+            // and footer). `containerRelativeFrame` measured against the
+            // whole screen here and pushed the footer below the bottom edge.
+            GeometryReader { geometry in
+                ScrollView(.horizontal) {
+                    // Not lazy: a handful of pages, created up front so none
+                    // is created mid-slide.
+                    HStack(spacing: 0) {
+                        ForEach(pages, id: \.id) { page in
+                            Group {
+                                if let step = page.step {
+                                    stepContent(step, advance)
+                                } else if let welcome {
+                                    welcome()
+                                }
                             }
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                            .environment(\.onboardingStepID, page.id)
+                            .id(page.id)
                         }
-                        .containerRelativeFrame([.horizontal, .vertical])
-                        .environment(\.onboardingStepID, page.id)
-                        .id(page.id)
                     }
+                    .scrollTargetLayout()
                 }
-                .scrollTargetLayout()
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: $currentPageID)
+                .scrollIndicators(.hidden)
             }
-            .scrollTargetBehavior(.paging)
-            .scrollPosition(id: $currentPageID)
-            .scrollIndicators(.hidden)
-            .scrollClipDisabled(false)
             .onChange(of: currentPageID) { _, _ in
                 // A swipe can only move one page, but handle a programmatic
                 // jump of more than one too: backfill every page passed over.
