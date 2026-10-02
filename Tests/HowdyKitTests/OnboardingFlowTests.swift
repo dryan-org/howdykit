@@ -128,6 +128,17 @@ struct OnboardingFlowTests {
         #expect(flow.value(for: health) == false)
     }
 
+    @Test("Clear puts one step back to unrecorded and leaves the rest")
+    func clearOneStep() {
+        let storage = makeStorage()
+        let flow = threeStepFlow(storage: storage)
+        flow.record(true, for: health)
+        flow.record(false, for: location)
+        flow.clear(health)
+        #expect(flow.value(for: health) == nil)
+        #expect(flow.value(for: location) == false)
+    }
+
     @Test("Reset clears every step, the welcome, and extra IDs")
     func resetClearsEverything() {
         let storage = makeStorage()
@@ -201,6 +212,39 @@ struct OnboardingFlowTests {
 
         flow.record(true, for: health)
         #expect(flag.value)
+    }
+
+    @Test("Reconcile records true for satisfied unanswered steps and leaves the rest nil")
+    func reconcileRecordsSatisfiedSteps() {
+        let flow = threeStepFlow(storage: makeStorage())
+        flow.reconcile { $0.id == location }
+        #expect(flow.value(for: location) == true)
+        #expect(flow.value(for: health) == nil)
+        #expect(flow.value(for: photos) == nil)
+    }
+
+    @Test("Reconcile never changes an existing answer")
+    func reconcileKeepsExistingAnswers() {
+        let flow = threeStepFlow(storage: makeStorage())
+        flow.record(false, for: photos)
+        flow.reconcile { _ in true }
+        #expect(flow.value(for: photos) == false)
+        #expect(flow.value(for: health) == true)
+        #expect(flow.value(for: location) == true)
+    }
+
+    @Test("Reconcile notifies Observation only when it records something")
+    func reconcileNotifiesOnlyOnChange() {
+        let flow = threeStepFlow(storage: makeStorage())
+        let quiet = Flag()
+        withObservationTracking({ _ = flow.needsOnboarding }, onChange: { quiet.value = true })
+        flow.reconcile { _ in false }
+        #expect(!quiet.value)
+
+        let loud = Flag()
+        withObservationTracking({ _ = flow.needsOnboarding }, onChange: { loud.value = true })
+        flow.reconcile { $0.id == health }
+        #expect(loud.value)
     }
 }
 
