@@ -135,7 +135,10 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
 
     private func advance() {
         if currentIndex + 1 < pendingSteps.count {
-            currentIndex += 1
+            // A bare index change jumps; wrapped, the page slides like a swipe.
+            withAnimation(.easeInOut) {
+                currentIndex += 1
+            }
         } else {
             onFinished()
         }

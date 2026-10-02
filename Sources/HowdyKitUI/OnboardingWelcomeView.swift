@@ -55,7 +55,11 @@ public struct OnboardingWelcomeView<Content: View>: View {
             value: [
                 welcomeID: OnboardingActions(
                     primary: OnboardingAction(title: actionTitle) {
-                        flow.record(true, for: welcomeID)
+                        // Animated so the flow's welcome-to-pages swap
+                        // crossfades instead of cutting.
+                        withAnimation(.easeInOut) {
+                            flow.record(true, for: welcomeID)
+                        }
                         onContinue()
                     }
                 )
