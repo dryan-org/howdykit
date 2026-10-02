@@ -1,22 +1,27 @@
 import HowdyKit
 import SwiftUI
 
-/// Shows the flow's welcome first when it still needs one, then sequences
-/// the steps `flow` still needs, in order, as a paged container. This is the turnkey piece: an app hands it a step's content and gets
-/// paging, swipe-past backfill, and completion for free, so CrumbDB, Marie,
-/// and anything after them share the same flow mechanics, not just the same
-/// per-step look.
+/// Sequences everything `flow` still needs as one paged container: the
+/// welcome first (when the flow has one and it's unrecorded), then each
+/// unanswered step in order. This is the turnkey piece: an app hands it a
+/// step's content and gets paging, swipe-past backfill, and completion for
+/// free, so CrumbDB, Marie, and anything after them share the same flow
+/// mechanics, not just the same per-step look.
+///
+/// The welcome is a real page, not a separate screen swapped out before the
+/// TabView, so Continue slides to the first step exactly like a swipe and the
+/// user can swipe back to it.
 ///
 /// One shared footer sits below the pages, so the page dots render above the
 /// buttons. Each page keeps owning its actions and state and publishes them
 /// upward (`OnboardingActions`); this view draws the footer for the page
 /// currently shown.
 ///
-/// The pending step list is captured once, when the view first appears, and
-/// held in `@State`. Steps already answered when the flow starts never
-/// appear; a step answered *during* the flow does not resize the page
-/// count out from under the user (which would shift every index, drop
-/// pages, and hide the dots once one step is left).
+/// The page list is captured once, when the view first appears, and held in
+/// `@State`. Pages already answered when the flow starts never appear; one
+/// answered *during* the flow does not resize the page count out from under
+/// the user (which would shift every index, drop pages, and hide the dots
+/// once one page is left).
 public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     private let flow: OnboardingFlow
     private let welcome: (() -> Welcome)?
@@ -30,13 +35,13 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     @State private var currentIndex = 0
     @State private var highestVisitedIndex = 0
     // `init` runs on every parent re-render (and every recorded answer
-    // re-renders the parent now that the flow is observable); `@State`
-    // keeps the first snapshot and ignores the later `initialValue`s.
-    @State private var pendingSteps: [OnboardingStepConfig]
+    // re-renders the parent, the flow being observable); `@State` keeps the
+    // first snapshot and ignores the later `initialValue`s.
+    @State private var pages: [OnboardingFlowPage]
 
-    /// - Parameter welcome: builds the welcome screen, shown while
-    ///   `flow.needsWelcome`. Typically an `OnboardingWelcomeView`, which
-    ///   records the welcome itself.
+    /// - Parameter welcome: builds the welcome page, shown first while the
+    ///   flow's welcome is unrecorded. Typically an `OnboardingWelcomeView`,
+    ///   which records the welcome itself; this view then slides on.
     /// - Parameter isAlreadySatisfied: reports whether a step is already
     ///   satisfied outside the flow (a permission the OS already granted).
     ///   Such unanswered steps are recorded `true` via
@@ -59,7 +64,7 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
         self.isAlreadySatisfied = isAlreadySatisfied
         self.stepContent = stepContent
         flow.reconcile(isSatisfied: isAlreadySatisfied)
-        _pendingSteps = State(initialValue: Self.snapshot(of: flow))
+        _pages = State(initialValue: OnboardingFlowPage.pending(in: flow, includeWelcome: true))
     }
 
     public var body: some View {
@@ -71,7 +76,7 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
         .background(theme.background.ignoresSafeArea())
         .onPreferenceChange(OnboardingActionsKey.self) { actions = $0 }
         .onChange(of: scenePhase) { _, phase in
-            // `pendingSteps` stays as captured: this only affects what shows next
+            // `pages` stays as captured: this only affects what shows next
             // time, and `advance()` already handles pages answered meanwhile.
             if phase == .active {
                 flow.reconcile(isSatisfied: isAlreadySatisfied)
@@ -81,38 +86,43 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
 
     @ViewBuilder
     private var content: some View {
-        Group {
-            // No state of its own: recording the welcome bumps the flow's change
-            // token, which `needsWelcome` reads, so this re-renders by itself.
-            if flow.needsWelcome, let welcome {
-                welcome()
-                    .environment(\.onboardingStepID, flow.welcomeID)
-            } else if pendingSteps.isEmpty {
-                Color.clear.onAppear(perform: onFinished)
-            } else {
-                TabView(selection: $currentIndex) {
-                    ForEach(Array(pendingSteps.enumerated()), id: \.element.id) { index, step in
-                        stepContent(step, advance)
-                            .environment(\.onboardingStepID, step.id)
-                            .tag(index)
+        if pages.isEmpty {
+            Color.clear.onAppear(perform: onFinished)
+        } else {
+            TabView(selection: $currentIndex) {
+                ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
+                    Group {
+                        if let step = page.step {
+                            stepContent(step, advance)
+                        } else if let welcome {
+                            welcome()
+                        }
                     }
+                    .environment(\.onboardingStepID, page.id)
+                    .tag(index)
                 }
-                #if os(iOS)
-                // `.automatic` shows the page dots CrumbDB's own onboarding
-                // already has (and hides them for a single pending step), not
-                // suppress them - `.never` also leaves the space iOS reserves
-                // for the control empty instead of actually removing it.
-                .tabViewStyle(.page(indexDisplayMode: .automatic))
-                #endif
-                .onChange(of: currentIndex) { _, newIndex in
-                    // A swipe can only move one page, but handle a programmatic
-                    // jump of more than one too: backfill every step passed over.
-                    guard newIndex > highestVisitedIndex else { return }
-                    for passedIndex in highestVisitedIndex..<newIndex {
-                        let step = pendingSteps[passedIndex]
-                        flow.recordIfNeeded(leaving: step)
-                    }
-                    highestVisitedIndex = newIndex
+            }
+            #if os(iOS)
+            // `.automatic` shows the page dots CrumbDB's own onboarding
+            // already has (and hides them for a single page), not suppress
+            // them - `.never` also leaves the space iOS reserves for the
+            // control empty instead of actually removing it.
+            .tabViewStyle(.page(indexDisplayMode: .automatic))
+            #endif
+            .onChange(of: currentIndex) { _, newIndex in
+                // A swipe can only move one page, but handle a programmatic
+                // jump of more than one too: backfill every page passed over.
+                guard newIndex > highestVisitedIndex else { return }
+                for passedIndex in highestVisitedIndex..<newIndex {
+                    backfill(pages[passedIndex])
+                }
+                highestVisitedIndex = newIndex
+            }
+            // The welcome records itself (`OnboardingWelcomeView`); slide on
+            // once it has, if it's still the page on screen.
+            .onChange(of: flow.needsWelcome) { _, needsWelcome in
+                if !needsWelcome, currentIndex == 0, pages[0].isWelcome {
+                    advance()
                 }
             }
         }
@@ -120,21 +130,15 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
 
     @ViewBuilder
     private var footer: some View {
-        if let id = currentPageID, let current = actions[id] {
+        if pages.indices.contains(currentIndex), let current = actions[pages[currentIndex].id] {
             OnboardingFooter(primary: current.primary, secondary: current.secondary)
         } else {
             Color.clear.frame(height: 0)
         }
     }
 
-    private var currentPageID: OnboardingStepID? {
-        if flow.needsWelcome, welcome != nil { return flow.welcomeID }
-        guard pendingSteps.indices.contains(currentIndex) else { return nil }
-        return pendingSteps[currentIndex].id
-    }
-
     private func advance() {
-        if currentIndex + 1 < pendingSteps.count {
+        if currentIndex + 1 < pages.count {
             // A bare index change jumps; wrapped, the page slides like a swipe.
             withAnimation(.easeInOut) {
                 currentIndex += 1
@@ -144,16 +148,19 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
         }
     }
 
-    // Reads `storage` directly rather than `flow.value(for:)`: this runs
-    // inside the parent's body, and going through the flow's tracked query
-    // would make the parent re-render on every answer for no reason.
-    private static func snapshot(of flow: OnboardingFlow) -> [OnboardingStepConfig] {
-        flow.steps.filter { flow.storage.value(for: $0.id) == nil }
+    /// Leaving a page unanswered: a step gets its `isSkippable` default, the
+    /// welcome (which has no skip path) counts as seen.
+    private func backfill(_ page: OnboardingFlowPage) {
+        if let step = page.step {
+            flow.recordIfNeeded(leaving: step)
+        } else if flow.value(for: page.id) == nil {
+            flow.record(true, for: page.id)
+        }
     }
 }
 
 extension OnboardingFlowView where Welcome == EmptyView {
-    /// A flow with no welcome screen: goes straight to the steps.
+    /// A flow with no welcome page: goes straight to the steps.
     public init(
         flow: OnboardingFlow,
         onFinished: @escaping () -> Void = {},
@@ -166,6 +173,6 @@ extension OnboardingFlowView where Welcome == EmptyView {
         self.isAlreadySatisfied = isAlreadySatisfied
         self.stepContent = stepContent
         flow.reconcile(isSatisfied: isAlreadySatisfied)
-        _pendingSteps = State(initialValue: Self.snapshot(of: flow))
+        _pages = State(initialValue: OnboardingFlowPage.pending(in: flow, includeWelcome: false))
     }
 }
