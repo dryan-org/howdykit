@@ -5,7 +5,7 @@ import SwiftUI
 /// welcome first (when the flow has one and it's unrecorded), then each
 /// unanswered step in order. This is the turnkey piece: an app hands it a
 /// step's content and gets paging, swipe-past backfill, and completion for
-/// free, so CrumbDB, Marie, and anything after them share the same flow
+/// free, so every app shares the same flow
 /// mechanics, not just the same per-step look.
 ///
 /// The welcome is a real page, not a separate screen swapped out before the

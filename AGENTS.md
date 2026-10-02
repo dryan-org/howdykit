@@ -1,7 +1,7 @@
 # Integrating HowdyKit (for agents)
 
-HowdyKit is the shared onboarding for dryan-org's apps (CrumbDB, Marie, and
-whatever comes next). Integrate it; do not fork its views or reimplement the
+HowdyKit is the shared onboarding for this organization's apps. Integrate
+it; do not fork its views or reimplement the
 flow in the app. `README.md` is the API reference; this file is the order of
 operations and the rules that are easy to get wrong.
 
@@ -164,8 +164,8 @@ and `flow.record(_:for:)` per step.
 
 ## Verifying on a simulator without tapping
 
-A `-autoAdvance` launch-argument hook (see Dolly's `AutoAdvance.swift` in the
-dryan-org demo app) lets each step fire its primary path when it becomes the
+A `-autoAdvance` launch-argument hook (a small View extension: with the
+flag present, a `task` polls the flow's `nextStepNeeded`) lets each step fire its primary path when it becomes the
 flow's next unanswered step, so `xcrun simctl io <device> recordVideo` can
 capture the whole flow. The recorder only writes frames while the screen
 changes, so a short video means the flow finished early or got stuck. Reset

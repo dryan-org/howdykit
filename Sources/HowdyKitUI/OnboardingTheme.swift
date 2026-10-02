@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Visual identity for a flow: colors, fonts, and an optional custom
 /// background, injected by each app rather than hardcoded. The same step
-/// view renders CrumbDB's brand (custom font, topo background, card chrome)
-/// and Marie's plain system look without forking the view itself, only the
+/// view renders one app's brand (custom font, custom background, card chrome)
+/// and another's plain system look without forking the view itself, only the
 /// theme in the environment differs.
 ///
 /// Views read it from the environment. Set it once at the app's root with
