@@ -57,26 +57,23 @@ layer never compiles SwiftUI it doesn't use.
   which `OnboardingAction` to pass on each render, the view itself just
   renders whatever it's given right now.
 - **`OnboardingStepView`**: header + arbitrary `@ViewBuilder` content +
-  primary/optional-secondary actions, themed. This is the whole per-step
-  template.
+  primary/optional-secondary actions, themed. Renders one step.
+- **`OnboardingWelcomeView`**: the first-run screen. No header/content split
+  forced on it (a hero layout usually wants more room than that), no skip,
+  a single action that records `true` for its step ID itself. Still themed
+  and still the same `OnboardingFlow` API as every other step, just its own
+  config so the layout can be as custom as CrumbDB's brand intro or Marie's
+  plain "Welcome to Marie" needs.
+- **`OnboardingFlowView`**: sequences the steps a flow still needs into a
+  paged container. An app hands it per-step content (keyed by
+  `OnboardingStepConfig`) and an `advance` closure to call once that step's
+  own action has recorded an answer; the container handles paging,
+  swipe-past backfill (`flow.recordIfNeeded(leaving:isSkippable:)`, using
+  `!step.isRequired` as the skippable default), and calls `onFinished` once
+  the last step advances. This is the turnkey piece: CrumbDB and Marie get
+  the same flow mechanics, not just the same per-step look.
 
-Not part of this: a welcome screen type (it's meant to be a unique view per
-app, not templated, see below) or any container that sequences multiple
-steps. Each app composes its own (CrumbDB's swipeable pages, Marie's
-branching `NavigationStack`, a future tvOS focus-driven push flow) around
-`OnboardingStepView` and `OnboardingFlow`; the kit doesn't own sequencing.
-
-A swipeable container specifically needs to call
-`flow.recordIfNeeded(leaving:isSkippable:)` from its page-change handler, not
-just from each step's own button, so a swipe past an unanswered step doesn't
-leave it looking never-seen.
-
-## Welcome
-
-Deliberately not a `HowdyKitUI` type. It's one no-skip, first-run-only screen
-per app, and every app's version of it is different enough (CrumbDB's brand
-intro vs. Marie's plain "Welcome to Marie") that templating it would fight
-the one place where a truly custom view is the right call. Build it as a
-normal view, give it a single "Continue" action, and call
-`flow.record(true, for:)` directly, there's no second storage mechanism for
-it, it's the same `OnboardingFlow` API as every other step.
+All three are genuinely turnkey. An app can still build its own container
+instead (a branching `NavigationStack`, a tvOS focus-driven push flow) when
+`OnboardingFlowView`'s linear paging doesn't fit, but that's an escape hatch,
+not the expected path.
