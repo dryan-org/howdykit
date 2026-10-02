@@ -45,6 +45,10 @@ target that only needs "is setup done" can depend on just this.
     is the same as tapping Skip), `true` for a non-skippable,
     acknowledge-only step (there's only one way to leave it). Never
     overwrites a real answer.
+  - `reconcile(isSatisfied:)`: records `true` for every unanswered step the
+    closure reports as already satisfied outside the flow (a permission the OS
+    already granted). Leaves answered steps alone and only notifies
+    observers when it records something.
 - **`OnboardingStepConfig`**: a step's `id` plus two independent flags.
   `isRequired`: the flow isn't satisfied until the step is recorded `true`.
   `isSkippable` (default `true`): the step can be left unanswered, which
@@ -87,7 +91,10 @@ layer never compiles SwiftUI it doesn't use.
   swipe-past backfill (`flow.recordIfNeeded(leaving: step)`, driven by
   `step.isSkippable`; swiping past a required step is allowed and records
   `false`), and calls `onFinished` once
-  the last step advances. This is the turnkey piece: CrumbDB and Marie get
+  the last step advances. Pass `isAlreadySatisfied:` (for example, "is the
+  OS permission already granted") and steps it accepts are recorded `true`
+  through `flow.reconcile` before paging, and again when the app becomes
+  active, so they never get a page. This is the turnkey piece: CrumbDB and Marie get
   the same flow mechanics, not just the same per-step look.
 
 All three are genuinely turnkey. An app can still build its own container

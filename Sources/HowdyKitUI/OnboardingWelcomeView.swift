@@ -44,18 +44,15 @@ public struct OnboardingWelcomeView<Content: View>: View {
                         .frame(maxWidth: .infinity, minHeight: geometry.size.height)
                 }
             }
-            Button(actionTitle) {
-                flow.record(true, for: welcomeID)
-                onContinue()
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(theme.primaryColor)
-            .frame(maxWidth: 560)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 28)
-            .padding(.top, 8)
-            .padding(.bottom, 12)
+            // Same footer as every step, including the empty Skip slot, so
+            // Continue sits exactly where Next will on the next screen.
+            OnboardingFooter(
+                primary: OnboardingAction(title: actionTitle) {
+                    flow.record(true, for: welcomeID)
+                    onContinue()
+                },
+                secondary: nil
+            )
         }
         .background(theme.background.ignoresSafeArea())
     }

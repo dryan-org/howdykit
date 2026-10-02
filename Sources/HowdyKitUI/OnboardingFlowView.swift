@@ -16,8 +16,10 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     private let flow: OnboardingFlow
     private let welcome: (() -> Welcome)?
     private let onFinished: () -> Void
+    private let isAlreadySatisfied: (OnboardingStepConfig) -> Bool
     private let stepContent: (OnboardingStepConfig, @escaping () -> Void) -> StepContent
 
+    @Environment(\.scenePhase) private var scenePhase
     @State private var currentIndex = 0
     @State private var highestVisitedIndex = 0
     // `init` runs on every parent re-render (and every recorded answer
@@ -28,6 +30,11 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     /// - Parameter welcome: builds the welcome screen, shown while
     ///   `flow.needsWelcome`. Typically an `OnboardingWelcomeView`, which
     ///   records the welcome itself.
+    /// - Parameter isAlreadySatisfied: reports whether a step is already
+    ///   satisfied outside the flow (a permission the OS already granted).
+    ///   Such unanswered steps are recorded `true` via
+    ///   `flow.reconcile(isSatisfied:)` and never get a page. Runs on every
+    ///   init, so keep it cheap.
     /// - Parameter stepContent: builds one step's view, given the step and
     ///   an `advance` closure the step's own primary action calls after
     ///   recording its answer. The container doesn't record answers itself,
@@ -35,46 +42,58 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     public init(
         flow: OnboardingFlow,
         onFinished: @escaping () -> Void = {},
+        isAlreadySatisfied: @escaping (OnboardingStepConfig) -> Bool = { _ in false },
         @ViewBuilder welcome: @escaping () -> Welcome,
         @ViewBuilder stepContent: @escaping (OnboardingStepConfig, @escaping () -> Void) -> StepContent
     ) {
         self.flow = flow
         self.welcome = welcome
         self.onFinished = onFinished
+        self.isAlreadySatisfied = isAlreadySatisfied
         self.stepContent = stepContent
+        flow.reconcile(isSatisfied: isAlreadySatisfied)
         _pendingSteps = State(initialValue: Self.snapshot(of: flow))
     }
 
     public var body: some View {
-        // No state of its own: recording the welcome bumps the flow's change
-        // token, which `needsWelcome` reads, so this re-renders by itself.
-        if flow.needsWelcome, let welcome {
-            welcome()
-        } else if pendingSteps.isEmpty {
-            Color.clear.onAppear(perform: onFinished)
-        } else {
-            TabView(selection: $currentIndex) {
-                ForEach(Array(pendingSteps.enumerated()), id: \.element.id) { index, step in
-                    stepContent(step, advance)
-                        .tag(index)
+        Group {
+            // No state of its own: recording the welcome bumps the flow's change
+            // token, which `needsWelcome` reads, so this re-renders by itself.
+            if flow.needsWelcome, let welcome {
+                welcome()
+            } else if pendingSteps.isEmpty {
+                Color.clear.onAppear(perform: onFinished)
+            } else {
+                TabView(selection: $currentIndex) {
+                    ForEach(Array(pendingSteps.enumerated()), id: \.element.id) { index, step in
+                        stepContent(step, advance)
+                            .tag(index)
+                    }
+                }
+                #if os(iOS)
+                // `.automatic` shows the page dots CrumbDB's own onboarding
+                // already has (and hides them for a single pending step), not
+                // suppress them - `.never` also leaves the space iOS reserves
+                // for the control empty instead of actually removing it.
+                .tabViewStyle(.page(indexDisplayMode: .automatic))
+                #endif
+                .onChange(of: currentIndex) { _, newIndex in
+                    // A swipe can only move one page, but handle a programmatic
+                    // jump of more than one too: backfill every step passed over.
+                    guard newIndex > highestVisitedIndex else { return }
+                    for passedIndex in highestVisitedIndex..<newIndex {
+                        let step = pendingSteps[passedIndex]
+                        flow.recordIfNeeded(leaving: step)
+                    }
+                    highestVisitedIndex = newIndex
                 }
             }
-            #if os(iOS)
-            // `.automatic` shows the page dots CrumbDB's own onboarding
-            // already has (and hides them for a single pending step), not
-            // suppress them - `.never` also leaves the space iOS reserves
-            // for the control empty instead of actually removing it.
-            .tabViewStyle(.page(indexDisplayMode: .automatic))
-            #endif
-            .onChange(of: currentIndex) { _, newIndex in
-                // A swipe can only move one page, but handle a programmatic
-                // jump of more than one too: backfill every step passed over.
-                guard newIndex > highestVisitedIndex else { return }
-                for passedIndex in highestVisitedIndex..<newIndex {
-                    let step = pendingSteps[passedIndex]
-                    flow.recordIfNeeded(leaving: step)
-                }
-                highestVisitedIndex = newIndex
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // `pendingSteps` stays as captured: this only affects what shows next
+            // time, and `advance()` already handles pages answered meanwhile.
+            if phase == .active {
+                flow.reconcile(isSatisfied: isAlreadySatisfied)
             }
         }
     }
@@ -100,12 +119,15 @@ extension OnboardingFlowView where Welcome == EmptyView {
     public init(
         flow: OnboardingFlow,
         onFinished: @escaping () -> Void = {},
+        isAlreadySatisfied: @escaping (OnboardingStepConfig) -> Bool = { _ in false },
         @ViewBuilder stepContent: @escaping (OnboardingStepConfig, @escaping () -> Void) -> StepContent
     ) {
         self.flow = flow
         self.welcome = nil
         self.onFinished = onFinished
+        self.isAlreadySatisfied = isAlreadySatisfied
         self.stepContent = stepContent
+        flow.reconcile(isSatisfied: isAlreadySatisfied)
         _pendingSteps = State(initialValue: Self.snapshot(of: flow))
     }
 }

@@ -63,41 +63,7 @@ public struct OnboardingStepView<Content: View>: View {
         }
     }
 
-    @ViewBuilder
     private var footer: some View {
-        VStack(spacing: 4) {
-            Group {
-                if primaryAction.isProminent {
-                    primaryButton.buttonStyle(.borderedProminent)
-                } else {
-                    primaryButton.buttonStyle(.bordered)
-                }
-            }
-            .controlSize(.large)
-
-            if let secondaryAction {
-                Button(secondaryAction.title, action: secondaryAction.handler)
-                    .buttonStyle(.plain)
-                    .font(.subheadline)
-                    .foregroundStyle(theme.primaryColor.opacity(0.85))
-                    .frame(minHeight: 44)
-            }
-        }
-        // `.borderedProminent`/`.bordered` otherwise fall back to the
-        // system accent color, not the theme - without this the header text
-        // re-themes live but the button never does.
-        .tint(theme.primaryColor)
-        .padding(.horizontal, 28)
-        .padding(.top, 8)
-        .padding(.bottom, 50)
-        .frame(maxWidth: 560)
-        .frame(maxWidth: .infinity)
-    }
-
-    private var primaryButton: some View {
-        Button(action: primaryAction.handler) {
-            Text(primaryAction.title)
-                .frame(maxWidth: .infinity)
-        }
+        OnboardingFooter(primary: primaryAction, secondary: secondaryAction)
     }
 }
