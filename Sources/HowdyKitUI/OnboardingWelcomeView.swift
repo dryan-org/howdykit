@@ -12,6 +12,10 @@ import SwiftUI
 /// Records `true` for the flow's `welcomeID` when the action fires, there's
 /// no second storage mechanism and no way to leave this screen unanswered.
 /// The flow must have been created with a welcome ID.
+///
+/// Draws the hero content only and publishes its action under the
+/// `welcomeID`; `OnboardingFlowView` renders the footer, so Continue sits
+/// where Next will on the next screen.
 public struct OnboardingWelcomeView<Content: View>: View {
     private let flow: OnboardingFlow
     private let welcomeID: OnboardingStepID
@@ -44,16 +48,18 @@ public struct OnboardingWelcomeView<Content: View>: View {
                         .frame(maxWidth: .infinity, minHeight: geometry.size.height)
                 }
             }
-            // Same footer as every step, including the empty Skip slot, so
-            // Continue sits exactly where Next will on the next screen.
-            OnboardingFooter(
-                primary: OnboardingAction(title: actionTitle) {
-                    flow.record(true, for: welcomeID)
-                    onContinue()
-                },
-                secondary: nil
-            )
         }
         .background(theme.background.ignoresSafeArea())
+        .preference(
+            key: OnboardingActionsKey.self,
+            value: [
+                welcomeID: OnboardingActions(
+                    primary: OnboardingAction(title: actionTitle) {
+                        flow.record(true, for: welcomeID)
+                        onContinue()
+                    }
+                )
+            ]
+        )
     }
 }

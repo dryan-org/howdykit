@@ -1,11 +1,17 @@
+import HowdyKit
 import SwiftUI
 
 /// One step: an optional header, arbitrary content, and up to two actions,
 /// themed from the environment (`.onboardingTheme(_:)`, set once at the app's
 /// root). This renders a single step only;
 /// `OnboardingFlowView` sequences a list of these into an actual flow.
+///
+/// Inside an `OnboardingFlowView` the view draws header and content only and
+/// publishes its actions upward; the flow renders them once, below the
+/// pages. Used on its own (no flow around it), it draws its own footer.
 public struct OnboardingStepView<Content: View>: View {
     @Environment(\.onboardingTheme) private var theme
+    @Environment(\.onboardingStepID) private var stepID
     private let header: OnboardingHeader?
     private let primaryAction: OnboardingAction
     private let secondaryAction: OnboardingAction?
@@ -38,9 +44,12 @@ public struct OnboardingStepView<Content: View>: View {
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height)
                 }
             }
-            footer
+            if stepID == nil {
+                OnboardingFooter(primary: primaryAction, secondary: secondaryAction)
+            }
         }
         .background(theme.background.ignoresSafeArea())
+        .preference(key: OnboardingActionsKey.self, value: publishedActions)
     }
 
     @ViewBuilder
@@ -63,7 +72,8 @@ public struct OnboardingStepView<Content: View>: View {
         }
     }
 
-    private var footer: some View {
-        OnboardingFooter(primary: primaryAction, secondary: secondaryAction)
+    private var publishedActions: [OnboardingStepID: OnboardingActions] {
+        guard let stepID else { return [:] }
+        return [stepID: OnboardingActions(primary: primaryAction, secondary: secondaryAction)]
     }
 }

@@ -75,15 +75,20 @@ layer never compiles SwiftUI it doesn't use.
   which `OnboardingAction` to pass on each render, the view itself just
   renders whatever it's given right now.
 - **`OnboardingStepView`**: header + arbitrary `@ViewBuilder` content +
-  primary/optional-secondary actions, themed. Renders one step.
+  primary/optional-secondary actions, themed. Renders one step. Inside a flow
+  it publishes its actions to `OnboardingFlowView`'s shared footer; on its own
+  it draws the footer itself.
 - **`OnboardingWelcomeView`**: the first-run screen. No header/content split
   forced on it (a hero layout usually wants more room than that), no skip,
   a single action that records `true` for the flow's `welcomeID` itself.
   Still themed and still the same `OnboardingFlow` API as every other step,
   just its own config so the layout can be as custom as CrumbDB's brand intro or Marie's
-  plain "Welcome to Marie" needs.
+  plain "Welcome to Marie" needs. Publishes its action to the flow's shared
+  footer the same way a step does.
 - **`OnboardingFlowView`**: shows the welcome first when the flow still needs
   it, then sequences the steps a flow still needs into a paged container.
+  It renders one footer under the pages (page dots above the buttons) for
+  whichever page is showing.
   Recording the welcome moves it on to the steps on its own, so an app
   doesn't branch on `needsWelcome` itself. An app hands it per-step content (keyed by
   `OnboardingStepConfig`) and an `advance` closure to call once that step's

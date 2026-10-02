@@ -7,6 +7,11 @@ import SwiftUI
 /// and anything after them share the same flow mechanics, not just the same
 /// per-step look.
 ///
+/// One shared footer sits below the pages, so the page dots render above the
+/// buttons. Each page keeps owning its actions and state and publishes them
+/// upward (`OnboardingActions`); this view draws the footer for the page
+/// currently shown.
+///
 /// The pending step list is captured once, when the view first appears, and
 /// held in `@State`. Steps already answered when the flow starts never
 /// appear; a step answered *during* the flow does not resize the page
@@ -20,6 +25,8 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     private let stepContent: (OnboardingStepConfig, @escaping () -> Void) -> StepContent
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.onboardingTheme) private var theme
+    @State private var actions: [OnboardingStepID: OnboardingActions] = [:]
     @State private var currentIndex = 0
     @State private var highestVisitedIndex = 0
     // `init` runs on every parent re-render (and every recorded answer
@@ -56,17 +63,37 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     }
 
     public var body: some View {
+        VStack(spacing: 0) {
+            content
+            footer
+        }
+        // The pages draw their own background; this covers the footer strip.
+        .background(theme.background.ignoresSafeArea())
+        .onPreferenceChange(OnboardingActionsKey.self) { actions = $0 }
+        .onChange(of: scenePhase) { _, phase in
+            // `pendingSteps` stays as captured: this only affects what shows next
+            // time, and `advance()` already handles pages answered meanwhile.
+            if phase == .active {
+                flow.reconcile(isSatisfied: isAlreadySatisfied)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         Group {
             // No state of its own: recording the welcome bumps the flow's change
             // token, which `needsWelcome` reads, so this re-renders by itself.
             if flow.needsWelcome, let welcome {
                 welcome()
+                    .environment(\.onboardingStepID, flow.welcomeID)
             } else if pendingSteps.isEmpty {
                 Color.clear.onAppear(perform: onFinished)
             } else {
                 TabView(selection: $currentIndex) {
                     ForEach(Array(pendingSteps.enumerated()), id: \.element.id) { index, step in
                         stepContent(step, advance)
+                            .environment(\.onboardingStepID, step.id)
                             .tag(index)
                     }
                 }
@@ -89,13 +116,21 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
                 }
             }
         }
-        .onChange(of: scenePhase) { _, phase in
-            // `pendingSteps` stays as captured: this only affects what shows next
-            // time, and `advance()` already handles pages answered meanwhile.
-            if phase == .active {
-                flow.reconcile(isSatisfied: isAlreadySatisfied)
-            }
+    }
+
+    @ViewBuilder
+    private var footer: some View {
+        if let id = currentPageID, let current = actions[id] {
+            OnboardingFooter(primary: current.primary, secondary: current.secondary)
+        } else {
+            Color.clear.frame(height: 0)
         }
+    }
+
+    private var currentPageID: OnboardingStepID? {
+        if flow.needsWelcome, welcome != nil { return flow.welcomeID }
+        guard pendingSteps.indices.contains(currentIndex) else { return nil }
+        return pendingSteps[currentIndex].id
     }
 
     private func advance() {

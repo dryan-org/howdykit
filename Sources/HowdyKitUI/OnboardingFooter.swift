@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The button area every screen shares. Both slots always take their space,
+/// The button area every screen shares, rendered once by
+/// `OnboardingFlowView` below the pages. Both slots always take their space,
 /// visible or not, so the main button and the Skip line sit at the same spot
 /// on the welcome, on a step with Skip, and on one without; nothing jumps
 /// between pages.
@@ -38,9 +39,9 @@ struct OnboardingFooter: View {
         .tint(theme.primaryColor)
         .padding(.horizontal, 28)
         .padding(.top, 8)
-        // Clearance for the page control iOS overlays on the bottom of a
-        // paged TabView; it reserves no layout space of its own.
-        .padding(.bottom, 50)
+        // The page control no longer overlaps this: the footer sits below
+        // the TabView, so the dots are above it.
+        .padding(.bottom, 12)
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
     }
