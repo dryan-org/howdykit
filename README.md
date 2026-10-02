@@ -62,8 +62,8 @@ target that only needs "is setup done" can depend on just this.
 Separate from `HowdyKit` so a watchOS target depending only on the storage
 layer never compiles SwiftUI it doesn't use.
 
-- **`OnboardingTheme`**: primary color, card background (`ShapeStyle`, any
-  material or color), fonts, and a custom background view, all defaulted to
+- **`OnboardingTheme`**: primary color (text) and accent color (header icon, buttons, Skip, page dot; defaults to primary), optional card background (`AnyShapeStyle`, any
+  material or color; nil means no card), fonts, and a custom background view, all defaulted to
   plain system styling. Provided through the environment with
   `.onboardingTheme(_:)` at the root. CrumbDB's brand (custom font, topo
   background) and Marie's plain look are the same view with different themes,
@@ -75,7 +75,7 @@ layer never compiles SwiftUI it doesn't use.
   which `OnboardingAction` to pass on each render, the view itself just
   renders whatever it's given right now.
 - **`OnboardingStepView`**: header + arbitrary `@ViewBuilder` content +
-  primary/optional-secondary actions, themed. Renders one step. Inside a flow
+  primary/optional-secondary actions, themed, drawn inside a rounded card when the theme sets `cardBackground`. Renders one step. Inside a flow
   it publishes its actions to `OnboardingFlowView`'s shared footer; on its own
   it draws the footer itself.
 - **`OnboardingWelcomeView`**: the first-run screen. No header/content split
@@ -96,7 +96,7 @@ layer never compiles SwiftUI it doesn't use.
   swipe-past backfill (`flow.recordIfNeeded(leaving: step)`, driven by
   `step.isSkippable`; swiping past a required step is allowed and records
   `false`), and calls `onFinished` once
-  the last step advances. Pass `isAlreadySatisfied:` (for example, "is the
+  the last step advances and `onPageShown` with the step ID each time a page is shown (for analytics). Pass `isAlreadySatisfied:` (for example, "is the
   OS permission already granted") and steps it accepts are recorded `true`
   through `flow.reconcile` before paging, and again when the app becomes
   active, so they never get a page. This is the turnkey piece: CrumbDB and Marie get

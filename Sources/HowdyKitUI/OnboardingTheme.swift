@@ -13,8 +13,16 @@ import SwiftUI
 /// Not `Sendable`: this is SwiftUI configuration data, read on the main
 /// actor as part of rendering, the same as the views it configures.
 public struct OnboardingTheme {
+    /// Text color (titles). See `accentColor` for the interactive highlights.
     public var primaryColor: Color
-    public var cardBackground: AnyShapeStyle
+    /// Interactive and brand highlights: the header icon, the primary button,
+    /// the Skip text, the current page dot. Primary is for text. Defaults to
+    /// `primaryColor` when not given.
+    public var accentColor: Color
+    /// When set, each step's header and content are drawn inside a rounded
+    /// card filled with it; `nil` means no card. Pass one as
+    /// `AnyShapeStyle(.regularMaterial)` or `AnyShapeStyle(Color.x.opacity(0.85))`.
+    public var cardBackground: AnyShapeStyle?
     public var titleFont: Font
     public var headlineFont: Font
     public var bodyFont: Font
@@ -22,22 +30,24 @@ public struct OnboardingTheme {
 
     public init(
         primaryColor: Color = .primary,
-        cardBackground: some ShapeStyle = .regularMaterial,
+        accentColor: Color? = nil,
+        cardBackground: AnyShapeStyle? = nil,
         titleFont: Font = .title2.bold(),
         headlineFont: Font = .headline,
         bodyFont: Font = .subheadline,
         @ViewBuilder background: () -> some View = { Color.clear }
     ) {
         self.primaryColor = primaryColor
-        self.cardBackground = AnyShapeStyle(cardBackground)
+        self.accentColor = accentColor ?? primaryColor
+        self.cardBackground = cardBackground
         self.titleFont = titleFont
         self.headlineFont = headlineFont
         self.bodyFont = bodyFont
         self.background = AnyView(background())
     }
 
-    /// Plain system styling: no custom font, no custom background, a
-    /// materials-based card. What an app reaches for until it wants to
+    /// Plain system styling: no custom font, no custom background, no
+    /// card. What an app reaches for until it wants to
     /// brand the flow.
     public static let `default` = OnboardingTheme()
 }

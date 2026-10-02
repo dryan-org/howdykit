@@ -14,6 +14,13 @@ struct OnboardingFlowPage: Equatable {
         new > old ? old..<new : 0..<0
     }
 
+    /// The id to report as shown, or `nil` when there is nothing new to
+    /// report (no page, or the same page as last time).
+    static func nextShown(_ id: OnboardingStepID?, after last: OnboardingStepID?) -> OnboardingStepID? {
+        guard let id, id != last else { return nil }
+        return id
+    }
+
     /// The pages a flow still needs, welcome first when it's wanted and
     /// unrecorded, then every unanswered step in declaration order. Reads
     /// `storage` directly rather than the flow's tracked queries: this runs

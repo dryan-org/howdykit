@@ -13,7 +13,7 @@ struct OnboardingPageIndicator: View {
         HStack(spacing: 8) {
             ForEach(0..<count, id: \.self) { index in
                 Circle()
-                    .fill(index == current ? theme.primaryColor : Color.secondary.opacity(0.35))
+                    .fill(index == current ? theme.accentColor : Color.secondary.opacity(0.35))
                     .frame(width: 7, height: 7)
             }
         }

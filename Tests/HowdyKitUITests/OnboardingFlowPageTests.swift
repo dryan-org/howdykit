@@ -57,4 +57,13 @@ struct OnboardingFlowPageTests {
         #expect(OnboardingFlowPage.indicesPassed(from: 2, to: 1).isEmpty)
         #expect(OnboardingFlowPage.indicesPassed(from: 2, to: 2).isEmpty)
     }
+
+    @Test("A page is reported when it is new, never twice in a row, and never when absent")
+    func nextShownGuard() {
+        #expect(OnboardingFlowPage.nextShown(first, after: nil) == first)
+        #expect(OnboardingFlowPage.nextShown(middle, after: first) == middle)
+        #expect(OnboardingFlowPage.nextShown(first, after: first) == nil)
+        #expect(OnboardingFlowPage.nextShown(nil, after: first) == nil)
+        #expect(OnboardingFlowPage.nextShown(nil, after: nil) == nil)
+    }
 }
