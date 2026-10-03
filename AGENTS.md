@@ -115,6 +115,11 @@ the pages. The step's primary action must `flow.record(...)` then call
 Theme comes from the environment (`.onboardingTheme(_:)`), set once at the
 root. Never pass a theme into a view; never hard-code brand colors in a step.
 
+The kit balances header titles and headlines itself. A step's own message
+paragraph is app content, so apply
+`Text(message).multilineTextAlignment(.center).balancedText()` to it; do not
+reach for `lineBreakStrategy`, which leaves a one-word last line alone.
+
 ## 5. Reconcile system permissions
 
 A permission the OS has already granted must not get a page. Pass

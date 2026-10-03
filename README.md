@@ -68,7 +68,13 @@ layer never compiles SwiftUI it doesn't use.
   `.onboardingTheme(_:)` at the root. A brand (custom font, custom
   background) and a plain look are the same view with different themes,
   not different views.
-- **`OnboardingHeader`**: icon (optional), title, headline (optional).
+- **`OnboardingHeader`**: icon (optional), title, headline (optional). The
+  title and headline are balanced (even lines, no one-word last line).
+- **`.balancedText()`**: the same balancing for any `Text`, for a step's own
+  paragraph: `Text(message).multilineTextAlignment(.center).balancedText()`.
+  `lineBreakStrategy = .pushOut` does not fix a one-word last line; this
+  does, by laying the text out at the narrowest width that keeps its line
+  count.
 - **`OnboardingAction`**: a title and a handler, not a state machine.
   A permission step's primary button changes label as its state changes (Allow
   Location → Open Settings → Next); that's the app's own logic recomputing
