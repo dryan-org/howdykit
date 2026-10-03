@@ -79,10 +79,12 @@ public struct OnboardingStepView<Content: View>: View {
                 .font(theme.titleFont)
                 .foregroundStyle(theme.primaryColor)
                 .multilineTextAlignment(.center)
+                .balancedText()
             if let headline = header.headline {
                 Text(headline)
                     .font(theme.headlineFont)
                     .multilineTextAlignment(.center)
+                    .balancedText()
             }
         }
     }
