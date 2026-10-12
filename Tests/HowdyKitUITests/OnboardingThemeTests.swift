@@ -60,24 +60,62 @@ struct OnboardingThemeLayoutTests {
         #expect(OnboardingTheme.minimumActionHeight == 44)
     }
 
+    private var darkEnv: EnvironmentValues {
+        var e = EnvironmentValues()
+        e.colorScheme = .dark
+        return e
+    }
+
     @Test func darkAccentGetsWhiteText() {
         for accent in [Color.black, Color(red: 0.1, green: 0.2, blue: 0.5), Color(red: 0.5, green: 0.1, blue: 0.1)] {
             #expect(OnboardingTheme(accentColor: accent).primaryButtonTextColor(in: env) == .white)
         }
     }
 
-    @Test func lightAccentGetsBlackText() {
-        for accent in [Color.white, Color.yellow, Color(red: 0.6, green: 1, blue: 0.8)] {
-            #expect(OnboardingTheme(accentColor: accent).primaryButtonTextColor(in: env) == .black)
+    @Test func lightAccentGetsNearBlackText() {
+        for accent in [Color.white, Color(red: 0.6, green: 1, blue: 0.8)] {
+            #expect(OnboardingTheme(accentColor: accent).primaryButtonTextColor(in: env) == OnboardingTheme.nearBlack)
+        }
+        #expect(OnboardingTheme.nearBlack != .black)
+    }
+
+    @Test func thresholdEdge() {
+        // Grays either side of the threshold (lightness about 0.795 and 0.82).
+        let below = Color(white: 0.74)
+        let above = Color(white: 0.78)
+        #expect(OnboardingTheme.oklabLightness(of: below, in: env) < OnboardingTheme.whiteTextMaximumLightness)
+        #expect(OnboardingTheme.oklabLightness(of: above, in: env) > OnboardingTheme.whiteTextMaximumLightness)
+        #expect(OnboardingTheme.contrastingTextColor(on: below, in: env) == .white)
+        #expect(OnboardingTheme.contrastingTextColor(on: above, in: env) == OnboardingTheme.nearBlack)
+    }
+
+    /// iOS dark-mode system mint (#66D4CF), spelled out because the macOS test host resolves `Color.mint` differently.
+    private let iosDarkMint = Color(red: 0.4, green: 0.831, blue: 0.812)
+
+    @Test func systemYellowAndMintGetNearBlack() {
+        #expect(OnboardingTheme.contrastingTextColor(on: .yellow, in: env) == OnboardingTheme.nearBlack)
+        #expect(OnboardingTheme.contrastingTextColor(on: .yellow, in: darkEnv) == OnboardingTheme.nearBlack)
+        #expect(OnboardingTheme.contrastingTextColor(on: iosDarkMint, in: darkEnv) == OnboardingTheme.nearBlack)
+    }
+
+    @Test func systemIndigoAndBlueGetWhite() {
+        for scheme in [env, darkEnv] {
+            #expect(OnboardingTheme.contrastingTextColor(on: .indigo, in: scheme) == .white)
+            #expect(OnboardingTheme.contrastingTextColor(on: .blue, in: scheme) == .white)
         }
     }
 
-    @Test func luminanceOrdersBlackBelowWhite() {
+    @Test func lightnessOrdersBlackBelowWhite() {
+        #expect(OnboardingTheme.oklabLightness(of: .black, in: env) < 0.01)
+        #expect(OnboardingTheme.oklabLightness(of: .white, in: env) > 0.99)
+    }
+
+    @Test func luminanceHelperStillOrdersBlackBelowWhite() {
         #expect(OnboardingTheme.relativeLuminance(of: .black, in: env) < 0.01)
         #expect(OnboardingTheme.relativeLuminance(of: .white, in: env) > 0.99)
     }
 
-    @Test func themeOverrideWinsOverLuminance() {
+    @Test func themeOverrideWinsOverLightness() {
         let theme = OnboardingTheme(accentColor: .yellow, primaryButtonTextColor: .purple)
         #expect(theme.primaryButtonTextColor(in: env) == .purple)
     }
