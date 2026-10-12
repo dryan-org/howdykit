@@ -64,10 +64,18 @@ layer never compiles SwiftUI it doesn't use.
 
 - **`OnboardingTheme`**: primary color (text) and accent color (header icon, buttons, Skip, page dot; defaults to primary), optional card background (`AnyShapeStyle`, any
   material or color; nil means no card), fonts, and a custom background view, all defaulted to
-  plain system styling. Provided through the environment with
+  plain system styling. Also `footerActionSpacing` (gap between the primary and
+  secondary footer action, default 24 pt) and `primaryButtonTextColor` (`nil`
+  picks white or black from the accent's luminance, set it to override).
+  Provided through the environment with
   `.onboardingTheme(_:)` at the root. A brand (custom font, custom
   background) and a plain look are the same view with different themes,
   not different views.
+- **Layout rules**: the footer and page dots are fixed below the pager and
+  never scroll. Each page's header and content scroll inside the slot above
+  them and are clipped to it, so nothing is drawn under the dots or footer at
+  any Dynamic Type size. The secondary action is at least 44 pt tall, and all
+  text uses semantic styles (the header icon scales with `ScaledMetric`).
 - **`OnboardingHeader`**: icon (optional), title, headline (optional). The
   title and headline are balanced (even lines, no one-word last line).
 - **`.balancedText()`**: the same balancing for any `Text`, for a step's own

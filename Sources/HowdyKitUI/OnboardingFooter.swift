@@ -10,6 +10,7 @@ struct OnboardingFooter: View {
     let actions: OnboardingActions?
 
     @Environment(\.onboardingTheme) private var theme
+    @Environment(\.self) private var environment
 
     private var primary: OnboardingAction {
         actions?.primary ?? OnboardingAction(title: "", handler: {})
@@ -20,7 +21,7 @@ struct OnboardingFooter: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: theme.footerActionSpacing) {
             Group {
                 if primary.isProminent {
                     primaryButton.buttonStyle(.borderedProminent)
@@ -46,7 +47,8 @@ struct OnboardingFooter: View {
                 .opacity(secondary == nil ? 0 : 1)
                 .disabled(secondary == nil)
                 .accessibilityHidden(secondary == nil)
-                .frame(height: 44)
+                .frame(minHeight: OnboardingTheme.minimumActionHeight)
+                .contentShape(Rectangle())
         }
         // `.borderedProminent`/`.bordered` otherwise fall back to the
         // system accent color, not the theme.
@@ -63,6 +65,7 @@ struct OnboardingFooter: View {
     private var primaryButton: some View {
         Button(action: primary.handler) {
             Text(primary.title)
+                .foregroundStyle(primary.isProminent ? theme.primaryButtonTextColor(in: environment) : theme.accentColor)
                 .frame(maxWidth: .infinity)
         }
     }

@@ -12,6 +12,7 @@ import SwiftUI
 public struct OnboardingStepView<Content: View>: View {
     @Environment(\.onboardingTheme) private var theme
     @Environment(\.onboardingStepID) private var stepID
+    @ScaledMetric(relativeTo: .largeTitle) private var iconSize: CGFloat = OnboardingLayout.headerIconSize
     private let header: OnboardingHeader?
     private let primaryAction: OnboardingAction
     private let secondaryAction: OnboardingAction?
@@ -38,7 +39,13 @@ public struct OnboardingStepView<Content: View>: View {
                     .frame(maxWidth: 560)
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height)
                 }
+                .scrollBounceBehavior(.basedOnSize)
+                // Header and content scroll inside this slot and are cut at
+                // its edge: nothing is drawn under the dots or the footer.
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
             }
+            .clipped()
             if stepID == nil {
                 OnboardingFooter(actions: OnboardingActions(primary: primaryAction, secondary: secondaryAction))
             }
@@ -72,7 +79,9 @@ public struct OnboardingStepView<Content: View>: View {
         VStack(spacing: 10) {
             if let icon = header.icon {
                 Image(systemName: icon)
-                    .font(.system(size: 64))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: iconSize)
                     .foregroundStyle(theme.accentColor)
             }
             Text(header.title)
