@@ -132,7 +132,11 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
                 .scrollTargetBehavior(.paging)
                 .scrollPosition(id: $currentPageID)
                 .scrollIndicators(.hidden)
+                .scrollClipDisabled(false)
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
             }
+            .clipped()
             .onChange(of: currentPageID) { _, _ in
                 // A swipe can only move one page, but handle a programmatic
                 // jump of more than one too: backfill every page passed over.

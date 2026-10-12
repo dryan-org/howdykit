@@ -47,7 +47,11 @@ public struct OnboardingWelcomeView<Content: View>: View {
                         .frame(maxWidth: 560)
                         .frame(maxWidth: .infinity, minHeight: geometry.size.height)
                 }
+                .scrollBounceBehavior(.basedOnSize)
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
             }
+            .clipped()
         }
         .background(theme.background.ignoresSafeArea())
         .preference(

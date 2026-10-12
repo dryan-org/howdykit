@@ -44,3 +44,46 @@ struct OnboardingThemeTests {
         #expect(OnboardingTheme(cardBackground: AnyShapeStyle(Color.white.opacity(0.85))).cardBackground != nil)
     }
 }
+
+@MainActor
+@Suite("OnboardingTheme footer layout and button contrast")
+struct OnboardingThemeLayoutTests {
+    private let env = EnvironmentValues()
+
+    @Test func footerSpacingDefaultsToAtLeast24() {
+        #expect(OnboardingTheme().footerActionSpacing == 24)
+        #expect(OnboardingTheme.default.footerActionSpacing >= 24)
+        #expect(OnboardingTheme(footerActionSpacing: 32).footerActionSpacing == 32)
+    }
+
+    @Test func minimumActionHeightIs44() {
+        #expect(OnboardingTheme.minimumActionHeight == 44)
+    }
+
+    @Test func darkAccentGetsWhiteText() {
+        for accent in [Color.black, Color(red: 0.1, green: 0.2, blue: 0.5), Color(red: 0.5, green: 0.1, blue: 0.1)] {
+            #expect(OnboardingTheme(accentColor: accent).primaryButtonTextColor(in: env) == .white)
+        }
+    }
+
+    @Test func lightAccentGetsBlackText() {
+        for accent in [Color.white, Color.yellow, Color(red: 0.6, green: 1, blue: 0.8)] {
+            #expect(OnboardingTheme(accentColor: accent).primaryButtonTextColor(in: env) == .black)
+        }
+    }
+
+    @Test func luminanceOrdersBlackBelowWhite() {
+        #expect(OnboardingTheme.relativeLuminance(of: .black, in: env) < 0.01)
+        #expect(OnboardingTheme.relativeLuminance(of: .white, in: env) > 0.99)
+    }
+
+    @Test func themeOverrideWinsOverLuminance() {
+        let theme = OnboardingTheme(accentColor: .yellow, primaryButtonTextColor: .purple)
+        #expect(theme.primaryButtonTextColor(in: env) == .purple)
+    }
+
+    @Test func headerIconSizeScalesFromSemanticBase() {
+        #expect(OnboardingLayout.headerIconSize == 64)
+        #expect(OnboardingLayout.footerIsPinned)
+    }
+}
