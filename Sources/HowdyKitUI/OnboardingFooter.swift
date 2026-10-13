@@ -11,6 +11,10 @@ struct OnboardingFooter: View {
 
     @Environment(\.onboardingTheme) private var theme
     @Environment(\.self) private var environment
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// False while the page holds its buttons back (`OnboardingActions.isRevealed`) or has none yet.
+    private var isShown: Bool { actions?.isRevealed ?? false }
 
     private var primary: OnboardingAction {
         actions?.primary ?? OnboardingAction(title: "", handler: {})
@@ -30,8 +34,8 @@ struct OnboardingFooter: View {
                 }
             }
             .controlSize(.large)
-            .opacity(actions == nil ? 0 : 1)
-            .disabled(actions == nil)
+            .opacity(isShown ? 1 : 0)
+            .disabled(!isShown)
             // No insertion/removal animation when prominence flips between
             // pages: an outgoing and incoming button overlapping for a frame
             // makes the footer momentarily taller.
@@ -44,15 +48,17 @@ struct OnboardingFooter: View {
                 .buttonStyle(.plain)
                 .font(.subheadline)
                 .foregroundStyle(theme.accentColor.opacity(0.85))
-                .opacity(secondary == nil ? 0 : 1)
-                .disabled(secondary == nil)
-                .accessibilityHidden(secondary == nil)
+                .opacity(secondary == nil || !isShown ? 0 : 1)
+                .disabled(secondary == nil || !isShown)
+                .accessibilityHidden(secondary == nil || !isShown)
                 .frame(minHeight: OnboardingTheme.minimumActionHeight)
                 .contentShape(Rectangle())
         }
         // `.borderedProminent`/`.bordered` otherwise fall back to the
         // system accent color, not the theme.
         .tint(theme.accentColor)
+        // The only animation in the footer: a page revealing its buttons. The flow strips every other one.
+        .animation(reduceMotion ? nil : .easeIn(duration: 0.6), value: isShown)
         .padding(.horizontal, 28)
         .padding(.top, 8)
         // The page control no longer overlaps this: the footer sits below
