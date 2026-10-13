@@ -66,7 +66,9 @@ layer never compiles SwiftUI it doesn't use.
   material or color; nil means no card), fonts, and a custom background view, all defaulted to
   plain system styling. Also `footerActionSpacing` (gap between the primary and
   secondary footer action, default 24 pt) and `primaryButtonTextColor` (`nil`
-  picks white or black from the accent's luminance, set it to override).
+  picks white or near-black from the accent's OKLab perceptual lightness, set it to override:
+  fills at or below a lightness of 0.80 take white, lighter ones the exposed `OnboardingTheme.nearBlack`;
+  `oklabLightness(of:in:)` returns the measure, and `relativeLuminance(of:in:)` remains as a helper only).
   Provided through the environment with
   `.onboardingTheme(_:)` at the root. A brand (custom font, custom
   background) and a plain look are the same view with different themes,

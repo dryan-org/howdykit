@@ -32,7 +32,7 @@ public struct OnboardingTheme {
     /// other.
     public var footerActionSpacing: CGFloat
     /// Text color of the primary (prominent) button. `nil` picks white or
-    /// black from the accent's luminance; see `primaryButtonTextColor(in:)`.
+    /// near-black from the accent's OKLab lightness; see `primaryButtonTextColor(in:)`.
     public var primaryButtonTextColor: Color?
 
     public init(
@@ -63,20 +63,50 @@ public struct OnboardingTheme {
     public static let minimumActionHeight: CGFloat = 44
 
     /// The primary button's text color: the theme's override, else white on a
-    /// dark accent and black on a light one.
+    /// dark accent and near-black on a light one.
     public func primaryButtonTextColor(in environment: EnvironmentValues) -> Color {
         primaryButtonTextColor ?? Self.contrastingTextColor(on: accentColor, in: environment)
     }
 
-    /// White on dark colors, black on light ones, by relative luminance
-    /// (WCAG weights on linear components). 0.179 is where white and black
-    /// text have equal contrast.
+    /// The dark foreground: near-black, softer than pure black.
+    public static let nearBlack = Color(white: 0.08)
+
+    /// Fills at or below this OKLab lightness take white text, lighter ones
+    /// near-black. Tuned by eye against the system colors: white stays on
+    /// orange, green, red, blue, indigo, purple, pink and brown, while
+    /// yellow and dark-mode mint and cyan take near-black.
+    public static let whiteTextMaximumLightness = 0.80
+
+    /// White on dark fills, near-black on light ones, by OKLab perceptual
+    /// lightness of the fill resolved in `environment`.
     public static func contrastingTextColor(on background: Color, in environment: EnvironmentValues) -> Color {
-        relativeLuminance(of: background, in: environment) > 0.179 ? .black : .white
+        oklabLightness(of: background, in: environment) <= whiteTextMaximumLightness ? .white : nearBlack
+    }
+
+    /// OKLab perceptual lightness `L`, 0 (black) to 1 (white), of a color
+    /// resolved in `environment` (so dynamic colors follow its color scheme).
+    ///
+    /// OKLab is by Bjorn Ottosson (https://bottosson.github.io/posts/oklab/),
+    /// public domain. This is his sRGB to OKLab conversion: undo the sRGB
+    /// gamma, mix to LMS with the published matrix, take cube roots, and
+    /// weight them for `L`.
+    public static func oklabLightness(of color: Color, in environment: EnvironmentValues) -> Double {
+        let c = color.resolve(in: environment)
+        func linearize(_ channel: Float) -> Double {
+            let v = Double(min(max(channel, 0), 1))
+            return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+        }
+        let r = linearize(c.red)
+        let g = linearize(c.green)
+        let b = linearize(c.blue)
+        let l = cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+        let m = cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+        let s = cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+        return 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s
     }
 
     /// WCAG relative luminance, 0 (black) to 1 (white), of a color resolved
-    /// in `environment` (so dynamic colors follow its color scheme).
+    /// in `environment`. A helper only; it no longer decides the text color.
     public static func relativeLuminance(of color: Color, in environment: EnvironmentValues) -> Double {
         let c = color.resolve(in: environment)
         return 0.2126 * Double(max(0, min(1, c.linearRed)))
