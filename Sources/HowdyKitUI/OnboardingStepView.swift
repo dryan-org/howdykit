@@ -12,7 +12,6 @@ import SwiftUI
 public struct OnboardingStepView<Content: View>: View {
     @Environment(\.onboardingTheme) private var theme
     @Environment(\.onboardingStepID) private var stepID
-    @ScaledMetric(relativeTo: .largeTitle) private var iconSize: CGFloat = OnboardingLayout.headerIconSize
     private let header: OnboardingHeader?
     private let primaryAction: OnboardingAction
     private let secondaryAction: OnboardingAction?
@@ -78,11 +77,7 @@ public struct OnboardingStepView<Content: View>: View {
     private func headerView(_ header: OnboardingHeader) -> some View {
         VStack(spacing: 10) {
             if let icon = header.icon {
-                Image(systemName: icon)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: iconSize)
-                    .foregroundStyle(theme.accentColor)
+                OnboardingHeaderIcon(name: icon)
             }
             Text(header.title)
                 .font(theme.titleFont)
@@ -101,5 +96,44 @@ public struct OnboardingStepView<Content: View>: View {
     private var publishedActions: [OnboardingStepID: OnboardingActions] {
         guard let stepID else { return [:] }
         return [stepID: OnboardingActions(primary: primaryAction, secondary: secondaryAction)]
+    }
+}
+
+/// A step's icon. Every step draws it the same way, so no screen sizes or animates its own: it is set at one
+/// point size (a symbol's own proportions then decide how wide it runs, so a wide glyph is no bigger than a
+/// tall one), and it draws on (the SF Symbols Draw On transition) once each time its page arrives, after the
+/// page's slide has settled. Under Reduce Motion it is simply there. A symbol without draw annotations
+/// appears instead of drawing.
+struct OnboardingHeaderIcon: View {
+    let name: String
+
+    @Environment(\.onboardingTheme) private var theme
+    @Environment(\.onboardingPageIsCurrent) private var isCurrent
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .largeTitle) private var iconSize: CGFloat = OnboardingLayout.headerIconSize
+    @State private var isDrawn = false
+
+    var body: some View {
+        Image(systemName: name)
+            .font(.system(size: iconSize))
+            .foregroundStyle(theme.accentColor)
+            .symbolEffect(.drawOn, isActive: !isDrawn)
+        // The slot keeps its height before the icon is drawn, so nothing shifts when it arrives.
+        .frame(height: iconSize)
+        .accessibilityHidden(true)
+        .task(id: isCurrent) {
+            guard isCurrent else {
+                isDrawn = false
+                return
+            }
+            if reduceMotion {
+                isDrawn = true
+                return
+            }
+            // The page slide takes 0.35 s; start once it has settled.
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
+            withAnimation { isDrawn = true }
+        }
     }
 }

@@ -124,6 +124,7 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
                             }
                             .frame(width: geometry.size.width, height: geometry.size.height)
                             .environment(\.onboardingStepID, page.id)
+                            .environment(\.onboardingPageIsCurrent, page.id == currentPageID)
                             .id(page.id)
                         }
                     }

@@ -22,11 +22,15 @@ public struct OnboardingWelcomeView<Content: View>: View {
     @Environment(\.onboardingTheme) private var theme
     private let actionTitle: LocalizedStringKey
     private let content: Content
+    private let actionsRevealed: Bool
     private let onContinue: () -> Void
 
+    /// - Parameter actionsRevealed: `false` keeps the footer's buttons hidden; flipping it to `true` fades
+    ///   them in (at once under Reduce Motion). For a hero that animates first.
     public init(
         flow: OnboardingFlow,
         actionTitle: LocalizedStringKey = "Continue",
+        actionsRevealed: Bool = true,
         @ViewBuilder content: () -> Content,
         onContinue: @escaping () -> Void = {}
     ) {
@@ -34,6 +38,7 @@ public struct OnboardingWelcomeView<Content: View>: View {
         self.flow = flow
         self.welcomeID = flow.welcomeID!
         self.actionTitle = actionTitle
+        self.actionsRevealed = actionsRevealed
         self.content = content()
         self.onContinue = onContinue
     }
@@ -61,7 +66,8 @@ public struct OnboardingWelcomeView<Content: View>: View {
                     primary: OnboardingAction(title: actionTitle) {
                         flow.record(true, for: welcomeID)
                         onContinue()
-                    }
+                    },
+                    isRevealed: actionsRevealed
                 )
             ]
         )
