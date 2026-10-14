@@ -122,3 +122,7 @@ All three are genuinely turnkey. An app can still build its own container
 instead (a branching `NavigationStack`, a tvOS focus-driven push flow) when
 `OnboardingFlowView`'s linear paging doesn't fit, but that's an escape hatch,
 not the expected path.
+
+## License
+
+[Hippocratic License 3.0](LICENSE.md).
