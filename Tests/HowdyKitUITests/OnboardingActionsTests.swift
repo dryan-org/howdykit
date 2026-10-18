@@ -67,3 +67,30 @@ struct OnboardingActionsTests {
         #expect(env.onboardingStepID == OnboardingStepID("welcome"))
     }
 }
+
+@MainActor
+@Suite("OnboardingFlowView footer identity")
+struct OnboardingFooterIdentityTests {
+    @Test func samePublishedTitlesStillGiveEachPageItsOwnFooter() {
+        let analytics = OnboardingStepID("analytics")
+        let notifications = OnboardingStepID("notifications")
+        var ran: [String] = []
+        func published(_ name: String) -> OnboardingActions {
+            OnboardingActions(
+                primary: OnboardingAction(title: "Allow", handler: { ran.append(name) }),
+                secondary: OnboardingAction(title: "Skip", handler: {})
+            )
+        }
+        let a = published("analytics")
+        let n = published("notifications")
+        // The premise: equality cannot tell the pages apart, so the footer's inputs compare equal.
+        #expect(a == n)
+        // The fix: the footer is keyed on the page, so the buttons rebind on every page change.
+        let flowType = OnboardingFlowView<EmptyView, EmptyView>.self
+        #expect(flowType.footerIdentity(for: analytics) != flowType.footerIdentity(for: notifications))
+        #expect(flowType.footerIdentity(for: nil) != flowType.footerIdentity(for: analytics))
+        // The page's own handler is the one its published actions carry.
+        n.primary.handler()
+        #expect(ran == ["notifications"])
+    }
+}

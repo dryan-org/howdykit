@@ -166,12 +166,22 @@ public struct OnboardingFlowView<Welcome: View, StepContent: View>: View {
     }
 
     private var footer: some View {
-        // One permanent view, never swapped for another, and never animated:
-        // a page change is wrapped in `withAnimation`, and any animated change
-        // in here would move the pages (and the dots at their bottom) while
-        // they slide.
+        // Never animated: a page change is wrapped in `withAnimation`, and any
+        // animated change in here would move the pages (and the dots at their
+        // bottom) while they slide. Each page gets its own footer instance
+        // (`.id`), because `OnboardingActions` equality ignores handlers: two
+        // consecutive pages with the same titles would otherwise be "equal",
+        // SwiftUI would skip the update, and the buttons would keep running
+        // the previous page's closures. The instance is stable within a page,
+        // so a page's own staged reveal (`isRevealed`) still fades.
         OnboardingFooter(actions: currentActions)
+            .id(Self.footerIdentity(for: currentPageID))
             .transaction { $0.animation = nil }
+    }
+
+    /// The identity the footer is keyed on; differs for every page.
+    static func footerIdentity(for page: OnboardingStepID?) -> OnboardingStepID {
+        page ?? OnboardingStepID("howdykit.footer.none")
     }
 
     private var currentIndex: Int {
